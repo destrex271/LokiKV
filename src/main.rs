@@ -6,7 +6,7 @@ fn main() {
 
     let mut values: Vec<isize> = Vec::new();
 
-    for i in 1..=10000000{
+    for i in 1..=100{
         values.push(i);
     }
 
@@ -17,7 +17,7 @@ fn main() {
         println!("Adding: {:?}", val);
         let v = val.clone();
         let k = key.clone();
-        kv.put_generic(&v, &v);
+        kv.put_generic(&k, &v);
     }
 
     kv.display_collection();

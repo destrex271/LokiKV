@@ -107,16 +107,22 @@ impl Collection{
         }
     }
 
-    fn insertElement(&mut self, key: Vec<u8>, value: Vec<u8>) -> bool{
+    fn insert_element(&mut self, key: Vec<u8>, value: Vec<u8>) -> bool{
         let val_index = self.value_page.add_value(value);
         self.map.insert(key, val_index);
         return true;
     }
 
-    fn getValue(&self, key: Vec<u8>) -> Vec<u8>{
+    fn get_value(&self, key: Vec<u8>) -> Vec<u8>{
         let index = self.map.get(&key).unwrap_or_else(|| panic!("FAILED AT RETRIEVING INDEX"));
         println!("Index is: {:?}", index);
         self.value_page.get_value(*index)
+    }
+
+    fn display_data(&self) {
+        for (key, _) in self.map.clone().into_iter(){
+            println!("{:?} -> {:?}", String::from_utf8(key.clone().to_vec()).unwrap(), String::from_utf8(self.get_value(key)))
+        }
     }
 }
 
@@ -133,20 +139,23 @@ impl LokiKV{
         }
     }
 
+    // Inserts bytes
     pub fn put(&mut self, key: Vec<u8>, value: Vec<u8>){
-        self.collection.insertElement(key, value);
+        self.collection.insert_element(key, value);
     }
 
+    // Inserts/Updates value
     pub fn put_generic<K:ToConvBytes, V:ToConvBytes>(&mut self, key: &K, value: &V){
-        self.collection.insertElement(key.to_bytestream(), value.to_bytestream());
+        self.collection.insert_element(key.to_bytestream(), value.to_bytestream());
     }
 
+    // Displays all keys and values
     pub fn display_collection(&mut self){
-        self.collection.display()
+        self.collection.display_data()
     }
 
     pub fn get_value<K: ToConvBytes>(&mut self, key: &K) -> String{
-        let val = self.collection.getValue(key.to_bytestream());
+        let val = self.collection.get_value(key.to_bytestream());
         String::from_utf8(val).unwrap()
     }
 }
