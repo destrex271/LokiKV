@@ -114,8 +114,10 @@ impl Collection{
     }
 
     fn get_value(&self, key: Vec<u8>) -> Vec<u8>{
-        let index = self.map.get(&key).unwrap_or_else(|| panic!("FAILED AT RETRIEVING INDEX"));
-        println!("Index is: {:?}", index);
+        let index = self.map.get(&key).unwrap_or_else(|| {
+            println!("Key not found!");
+            &0
+        });
         self.value_page.get_value(*index)
     }
 
