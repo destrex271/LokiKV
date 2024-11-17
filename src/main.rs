@@ -1,7 +1,14 @@
+mod server;
 use std::{io::{stdin, stdout, Write}, thread::Result};
 use lokikv::LokiKV;
+use server::LokiServerFunctions;
 
 fn main(){
+    let serv = server::LokiServer::new("localhost".to_string(), 8765);
+    serv.start_event_loop();
+}
+
+fn main_proc(){
     let mut store = LokiKV::new();
     let mut buffer_value = String::new();
 
