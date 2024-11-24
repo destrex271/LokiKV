@@ -1,13 +1,14 @@
-mod server;
+mod server_multithread;
 use std::{io::{stdin, stdout, Write}, thread::Result};
 use lokikv::LokiKV;
-use server::LokiServerFunctions;
+use crate::server_multithread::server::{LokiServer, LokiServerFunctions};
 
 fn main(){
-    let serv = server::LokiServer::new("localhost".to_string(), 8765);
+    let mut serv = LokiServer::new("localhost".to_string(), 8765, 16);
     serv.start_event_loop();
 }
 
+#[warn(dead_code)]
 fn main_proc(){
     let mut store = LokiKV::new();
     let mut buffer_value = String::new();
