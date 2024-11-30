@@ -3,7 +3,6 @@ use std::collections::{self, HashMap};
 use std::mem;
 use std::ptr::null;
 
-
 // Root level memory, contains value data as bytes, does not know anything about the key
 struct Page{
     data: Vec<Vec<u8>>,
@@ -152,11 +151,11 @@ impl LokiKV{
     }
 
     // Displays all keys and values
-    pub fn display_collection(&mut self){
+    pub fn display_collection(&self){
         self.collection.display_data()
     }
 
-    pub fn get_value<K: ToConvBytes>(&mut self, key: &K) -> String{
+    pub fn get_value<K: ToConvBytes>(&self, key: &K) -> String{
         let val = self.collection.get_value(key.to_bytestream());
         String::from_utf8(val).unwrap()
     }
