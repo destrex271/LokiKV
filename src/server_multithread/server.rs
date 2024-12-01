@@ -1,7 +1,6 @@
-use std::{borrow::Borrow, ops::{Deref, DerefMut}, sync::{Arc, Mutex, RwLock}, time::Duration};
-use crate::loki_kv::loki_kv::LokiKV;
+use std::{ops::{Deref, DerefMut}, sync::{Arc, RwLock}};
+use crate::loki_kv::loki_kv::{LokiKV, ValueObject};
 // use crate::server_multithread::thread_pool::ThreadPool;
-use rayon::{scope, ThreadPool, ThreadPoolBuilder};
 use tokio::{io::{self, AsyncReadExt, AsyncWriteExt}, net::{TcpListener, TcpStream}, time::sleep};
 
 // Server Logic
@@ -88,8 +87,13 @@ fn handle_db_command_rd(db_instance: &LokiKV, cmd_string: String) -> Result<Stri
             if key.len() == 0{
                 panic!("No key provided");
             }
-            let value = db_instance.get_value(&key);
-            buffer_value = format!("{value}");
+            let value = db_instance.get(key).unwrap();
+            match value{
+                ValueObject::StringData(data) => {
+                    buffer_value = format!("{data}")
+                },
+                _ => panic!("Unsupported data type")
+            }
         },
         "ECHOBUFF" => {
             println!("{:?}", buffer_value);
@@ -116,19 +120,29 @@ fn handle_db_command_wr(db_instance: &mut LokiKV, cmd_string: String) -> Result<
             let key: String = tokens.nth(0).unwrap().to_string();
             buffer_value = format!("Key: {key}");
             let val: String = tokens.nth(0).unwrap().to_string();
-            db_instance.put_generic(&key, &val);
-        },
-        "GET" => {
-            let key_wrap = tokens.nth(0);
-            let key = match key_wrap{
-                Some(data) => data.to_string(),
-                _ => "".to_string()
-            };
-            if key.len() == 0{
-                panic!("No key provided");
+            
+            // Handle String type
+            if val.starts_with("'") && val.ends_with("'"){
+                db_instance.put(key, ValueObject::StringData(val));
+            }else if val.eq("true") || val.eq("false") {
+                db_instance.put(key, ValueObject::BoolData(val.eq("true")));
+            }else if val.contains(".") {
+                let vl = val.parse::<f64>();
+                match vl{
+                    Ok(data) => {
+                        db_instance.put(key, ValueObject::DecimalData(data));
+                    },
+                    _ => eprintln!("Data type not supported yet")
+                }
+            }else{
+                let vl = val.parse::<isize>();
+                match vl{
+                    Ok(data) => {
+                        db_instance.put(key, ValueObject::IntData(data));
+                    },
+                    _ => eprintln!("Data type not supported yet")
+                }
             }
-            let value = db_instance.get_value(&key);
-            buffer_value = format!("{value}");
         },
         "ECHOBUFF" => {
             println!("{:?}", buffer_value);
@@ -136,53 +150,25 @@ fn handle_db_command_wr(db_instance: &mut LokiKV, cmd_string: String) -> Result<
         "INCR" => {
             // Increases value at key
             let key = tokens.nth(0).unwrap().to_string();
-            let val = db_instance.get_value(&key);
-
-            // Try to convert variable to integer
-            match val.parse::<f64>(){
-                Ok(n) => {
-                    let dc: f64 = n + 1.0;
-                    db_instance.put_generic(&key, &dc.to_string());
-                },
-                Err(err) => {
-                    panic!("{:?}", err);
-                }
+            let resp = db_instance.incr(key);
+            match resp{
+                Err(st) => eprintln!("{:?}", st),
+                _ => print!("") 
             }
         },
         "DECR" => {
             let key = tokens.nth(0).unwrap().to_string();
-            let val = db_instance.get_value(&key);
-
-            // Try to convert variable to integer
-            match val.parse::<f64>(){
-                Ok(n) => {
-                    // Update
-                    let dc: f64 = n - 1.0;
-                    println!("{dc}");
-                    db_instance.put_generic(&key, &dc.to_string());
-                },
-                Err(err) => {
-                    panic!("{:?}", err);
-                }
+            let resp = db_instance.incr(key);
+            match resp{
+                Err(st) => eprintln!("{:?}", st),
+                _ => print!("") 
             }
-
         },
-        "DISPLAY" => {
-            db_instance.display_collection();
-        }
         _ => println!("Not a valid command")
     }
 
     Ok(buffer_value)
 }
-
-// async fn handle_conn_dummy(socket: TcpStream, db_instance: Arc<RwLock<LokiKV>>) {
-//     println!("HI!");
-//     let mut ins = db_instance.write().unwrap();
-//     let res = handle_db_command_wr(ins.deref_mut(), String::from("SET data 12"));
-//     println!("DONE!");
-// }
-
 
 impl LokiServer{
     pub async fn new(host: String, port: u16, thread_count: usize) -> Self{
