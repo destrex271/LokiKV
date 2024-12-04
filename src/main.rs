@@ -1,5 +1,6 @@
 mod server_multithread;
 mod loki_kv;
+mod parser;
 use tokio::net::TcpListener;
 
 use crate::server_multithread::server::LokiServer;

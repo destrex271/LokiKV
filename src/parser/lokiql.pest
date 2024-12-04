@@ -1,0 +1,24 @@
+// Literals
+WHITESPACE = _{ " " | "\n" | "\r" | "\t" }
+SEPARATOR  = _{ ";" }
+INT        = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+FLOAT      = @{ "-"? ~ ASCII_DIGIT+ }
+STRING     = @{ "'" ~ INNER ~ "'" }
+INNER      = @{ CHAR* }
+CHAR       =  {
+    !("'" | "\\") ~ ANY
+  | "\\" ~ ("'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+  | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+BOOL       = @{ "true" | "false" }
+
+// Key should be a string without whitespaces
+KEY = @{ (!WHITESPACE ~ ANY)+ }
+
+// Command Types
+DUO_COMMAND = @{ "SET" }
+UNI_COMMAND = @{ "GET" | "INCR" | "DECR" }
+
+COMMAND = { (DUO_COMMAND ~ KEY ~ (STRING | INT | BOOL | FLOAT)) | (UNI_COMMAND ~ KEY) }
+
+LOKIQL_FILE = _{ SOI ~ COMMAND ~ (SEPARATOR ~ COMMAND)* ~ EOI }
