@@ -8,14 +8,16 @@ use pest_derive::Parser;
 #[grammar = "./parser/lokiql.pest"]
 pub struct LokiQLParser;
 
-enum QLCommands {
+#[derive(Clone, Copy, Debug)]
+pub enum QLCommands {
     SET,
     GET,
     INCR,
     DECR,
 }
 
-enum QLValues {
+#[derive(Clone, Debug)]
+pub enum QLValues {
     QLBool(bool),
     QLInt(isize),
     QLFloat(f64),
@@ -25,7 +27,8 @@ enum QLValues {
     QLPhantom,
 }
 
-struct AST {
+#[derive(Debug)]
+pub struct AST {
     val: QLValues,
     children: Vec<Box<AST>>, // Can only have 2 children at max
 }
@@ -44,14 +47,32 @@ impl AST {
         self.children.push(new_node);
     }
 
-    fn get_left_child(&mut self) -> Option<&mut Box<AST>> {
+    pub fn get_value(&self) -> QLValues {
+        self.val.clone()
+    }
+
+    pub fn get_left_child(&self) -> Option<&Box<AST>> {
+        if self.children.len() == 0 {
+            return None;
+        }
+        return self.children.get(0);
+    }
+
+    pub fn get_right_child(&self) -> Option<&Box<AST>> {
+        if self.children.len() < 2 {
+            return None;
+        }
+        return self.children.get(1);
+    }
+
+    pub fn get_left_child_mut(&mut self) -> Option<&mut Box<AST>> {
         if self.children.len() == 0 {
             return None;
         }
         return self.children.get_mut(0);
     }
 
-    fn get_right_child(&mut self) -> Option<&mut Box<AST>> {
+    pub fn get_right_child_mut(&mut self) -> Option<&mut Box<AST>> {
         if self.children.len() < 2 {
             return None;
         }
@@ -59,29 +80,35 @@ impl AST {
     }
 }
 
-pub fn parse_lokiql(ql: &str) {
-    println!("Data -> {:?}", ql);
+pub fn parse_lokiql(ql: &str) -> Vec<Option<AST>> {
+    // println!("Data -> {:?}", ql);
     let result = LokiQLParser::parse(Rule::LOKIQL_FILE, ql).unwrap();
-    println!("{:?}", result);
+    // println!("{:?}", result);
+
+    let mut asts: Vec<Option<AST>> = vec![];
     for pair in result {
-        println!("HERE -----> {:?}", pair);
+        // println!("HERE -----> {:?}", pair);
         match pair.as_rule() {
             // Parse Each command
             Rule::COMMAND => {
-                println!("Sending {:?}", pair);
-                parse_vals(pair, None);
+                // println!("Sending {:?}", pair);
+                let ast = parse_vals(pair, None);
+                asts.push(ast);
             }
+            // Rule::EOI => println!("End of File"),
             _ => {
-                println!("Something not for sending -> {:?}", pair)
+                // println!("Something not for sending -> {:?}", pair)
             }
         }
     }
+
+    return asts;
 }
 
 pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<AST> {
     match pair.as_rule() {
         Rule::DUO_COMMAND => {
-            println!("Duo command here -> {:?}", pair.as_str());
+            // println!("Duo command here -> {:?}", pair.as_str());
             let mut node = QLValues::QLPhantom;
             match pair.as_str() {
                 "SET" => {
@@ -117,48 +144,51 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
         Rule::FLOAT => {
             let node_val = QLValues::QLFloat(pair.as_str().parse().unwrap());
             ast_node.unwrap().add_child(node_val);
-            println!("Float here -> {:?}", pair.as_str());
+            // println!("Float here -> {:?}", pair.as_str());
             None
         }
         Rule::INT => {
             let node_val = QLValues::QLInt(pair.as_str().parse().unwrap());
             ast_node.unwrap().add_child(node_val);
-            println!("Int here -> {:?}", pair.as_str());
+            // println!("Int here -> {:?}", pair.as_str());
             None
         }
         Rule::STRING => {
             let node_val = QLValues::QLString(pair.as_str().to_string());
             ast_node.unwrap().add_child(node_val);
-            println!("String here -> {:?}", pair.as_str());
+            // println!("String here -> {:?}", pair.as_str());
             None
         }
         Rule::BOOL => {
             let node_val = QLValues::QLString(pair.as_str().parse().unwrap());
             ast_node.unwrap().add_child(node_val);
-            println!("Bool here -> {:?}", pair.as_str());
+            // println!("Bool here -> {:?}", pair.as_str());
             None
         }
         Rule::KEY => {
+            // println!("KEy here -> {:?}", pair);
             let node_val = QLValues::QLKey(pair.as_str().to_string());
             ast_node.unwrap().add_child(node_val);
-            println!("KEy here -> {:?}", pair.as_str());
             None
         }
+        Rule::EOI => None,
         Rule::COMMAND => {
-            println!("Command -> {:?}", pair);
+            // println!("Command -> {:?}", pair);
             let mut pair_in = pair.clone().into_inner();
             let mut root = Box::new(AST::new(QLValues::QLPhantom));
             let mut root_ast = &mut root;
             if let Some(command) = pair_in.next() {
                 parse_vals(command, Some(&mut root_ast));
-                root_ast = root_ast.get_left_child().unwrap();
+                root_ast = root_ast.get_left_child_mut().unwrap();
+                // println!("\nPARSED COMMAND\n next is {:?}", root_ast);
             };
             if let Some(key) = pair_in.next() {
-                parse_vals(key, root_ast.get_left_child());
-                root_ast = root_ast.get_left_child().unwrap();
+                parse_vals(key, Some(root_ast));
+                // println!("\nPARSED KEY\n next is {:?}", root_ast);
             };
             if let Some(value) = pair_in.next() {
-                parse_vals(value, root_ast.get_left_child().unwrap().get_left_child());
+                parse_vals(value, Some(root_ast));
+                // println!("\nPARSED VALUE\n next is {:?}", root_ast);
             };
             return Some(*root);
         }
