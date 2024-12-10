@@ -12,6 +12,7 @@ pub enum ValueObject {
     BoolData(bool),
     Phantom,
     DecimalData(f64),
+    OutputString(String),
 }
 
 // Primary Store Structs to store data into page, uses a hashmap
@@ -80,13 +81,13 @@ impl LokiKV {
     }
 
     // Displays all keys and values
-    pub fn display_collection(&self) {
-        println!("-------------------------------------------------------------------");
-        println!("|Key\t\t\t\t|\t\t\t\tValues|");
-        println!("-------------------------------------------------------------------");
+    pub fn display_collection(&self) -> String {
+        let mut data = String::new();
         for (key, val) in self.store.iter() {
             println!("|{:?}\t\t\t\t|\t\t\t\t{:?}|", key, val);
+            data += &format!("|{:?}\t\t\t\t|\t\t\t\t{:?}|", key, val);
         }
-        println!("-------------------------------------------------------------------");
+        data += &format!("-------------------------------------------------------------------");
+        return data;
     }
 }

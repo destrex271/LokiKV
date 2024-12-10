@@ -102,6 +102,11 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
                     };
                     None
                 }
+                QLCommands::DISPLAY => {
+                    let ins = db.read().unwrap();
+                    let data = ins.display_collection();
+                    Some(ValueObject::OutputString(data))
+                }
             }
         }
         QLValues::QLKey(key_val) => {

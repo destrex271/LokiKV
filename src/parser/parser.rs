@@ -14,6 +14,7 @@ pub enum QLCommands {
     GET,
     INCR,
     DECR,
+    DISPLAY,
 }
 
 #[derive(Clone, Debug)]
@@ -141,6 +142,14 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                 _ => panic!("Command not supported yet!"),
             }
         }
+        Rule::SOLO_COMMAND => match pair.as_str() {
+            "DISPLAY" => {
+                let node = QLValues::QLCommand(QLCommands::DISPLAY);
+                ast_node.unwrap().add_child(node);
+                None
+            }
+            _ => panic!("Support for command not added"),
+        },
         Rule::FLOAT => {
             let node_val = QLValues::QLFloat(pair.as_str().parse().unwrap());
             ast_node.unwrap().add_child(node_val);
