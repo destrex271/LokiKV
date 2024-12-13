@@ -13,6 +13,7 @@ pub enum ValueObject {
     Phantom,
     DecimalData(f64),
     OutputString(String),
+    BlobData(Vec<u8>),
 }
 
 // Primary Store Structs to store data into page, uses a hashmap

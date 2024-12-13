@@ -8,3 +8,8 @@ This project is specifically for learning purposes only.
  - Support for KEY VALUE Store
  - Support for basic commands like SET, GET, INCR, DECR
  - A DFA based query parsing engine
+
+
+### TODO
+ - Add Blob storage support
+ - Add support for distributed data storage

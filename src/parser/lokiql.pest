@@ -3,6 +3,7 @@ WHITESPACE = _{ " " | "\n" | "\r" | "\t" }
 SEPARATOR  = _{ ";" }
 INT        = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
 FLOAT      = @{ "-"? ~ ASCII_DIGIT+ }
+BLOB       = @{ "[BLOB_BEGINS]" ~ INNER ~ "[BLOB_ENDS]" }
 STRING     = @{ "'" ~ INNER ~ "'" }
 INNER      = @{ CHAR* }
 CHAR       =  {
@@ -16,10 +17,10 @@ BOOL       = @{ "true" | "false" }
 KEY = @{ (!WHITESPACE ~ ANY)+ }
 
 // Command Types
-DUO_COMMAND = @{ "SET" }
-UNI_COMMAND = @{ "GET" | "INCR" | "DECR" }
+DUO_COMMAND  = @{ "SET" }
+UNI_COMMAND  = @{ "GET" | "INCR" | "DECR" }
 SOLO_COMMAND = @{ "DISPLAY" }
 
-COMMAND = { (DUO_COMMAND ~ KEY ~ (STRING | INT | BOOL | FLOAT)) | (UNI_COMMAND ~ KEY) | SOLO_COMMAND }
+COMMAND = { (DUO_COMMAND ~ KEY ~ (STRING | INT | BOOL | FLOAT | BLOB)) | (UNI_COMMAND ~ KEY) | SOLO_COMMAND }
 
 LOKIQL_FILE = _{ SOI ~ COMMAND ~ (SEPARATOR ~ COMMAND)* ~ EOI }

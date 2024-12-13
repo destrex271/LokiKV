@@ -110,7 +110,6 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
             }
         }
         QLValues::QLKey(key_val) => {
-            // println!("Key is -> {:?}", key_val);
             key = key_val;
             None
         }
@@ -120,10 +119,7 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
                 ins.put(key, ValueObject::BoolData(bool_val));
                 None
             }
-            _ => {
-                // println!("No need for writing");
-                None
-            }
+            _ => None,
         },
         QLValues::QLInt(int_v) => match mode {
             OpMode::Write => {
@@ -131,10 +127,7 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
                 ins.put(key, ValueObject::IntData(int_v));
                 None
             }
-            _ => {
-                // println!("No need for writing");
-                None
-            }
+            _ => None,
         },
         QLValues::QLFloat(fl_v) => match mode {
             OpMode::Write => {
@@ -142,10 +135,7 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
                 ins.put(key, ValueObject::DecimalData(fl_v));
                 None
             }
-            _ => {
-                // println!("No need for writing");
-                None
-            }
+            _ => None,
         },
         QLValues::QLString(st_v) => match mode {
             OpMode::Write => {
@@ -153,10 +143,15 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
                 ins.put(key, ValueObject::StringData(st_v));
                 None
             }
-            _ => {
-                // println!("No need for writing");
+            _ => None,
+        },
+        QLValues::QLBlob(data) => match mode {
+            OpMode::Write => {
+                let mut ins = db.write().unwrap();
+                ins.put(key, ValueObject::BlobData(data));
                 None
             }
+            _ => None,
         },
         _ => {
             // println!("Value is -> {:?}", val);

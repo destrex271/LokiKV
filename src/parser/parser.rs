@@ -26,6 +26,7 @@ pub enum QLValues {
     QLKey(String),
     QLCommand(QLCommands),
     QLPhantom,
+    QLBlob(Vec<u8>),
 }
 
 #[derive(Debug)]
@@ -172,6 +173,14 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
             let node_val = QLValues::QLString(pair.as_str().parse().unwrap());
             ast_node.unwrap().add_child(node_val);
             // println!("Bool here -> {:?}", pair.as_str());
+            None
+        }
+        Rule::BLOB => {
+            let mut val: String = pair.as_str().parse().unwrap();
+            val = val.replace("[BLOB_BEINGS]", "");
+            val = val.replace("[BLOB_ENDS]", "");
+            let node_val = QLValues::QLBlob(val.as_bytes().to_vec());
+            ast_node.unwrap().add_child(node_val);
             None
         }
         Rule::KEY => {
