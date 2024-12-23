@@ -14,13 +14,13 @@ CHAR       =  {
 BOOL       = @{ "true" | "false" }
 
 // Key should be a string without whitespaces
-KEY = @{ (!WHITESPACE ~ ANY)+ }
+ID = @{ (!WHITESPACE ~ ANY)+ }
 
 // Command Types
 DUO_COMMAND  = @{ "SET" }
-UNI_COMMAND  = @{ "GET" | "INCR" | "DECR" }
-SOLO_COMMAND = @{ "DISPLAY" }
+UNI_COMMAND  = @{ "GET" | "INCR" | "DECR" | "/createcol" | "/selectcol" }
+SOLO_COMMAND = @{ "DISPLAY" | "/getcur_colname" | "/listcolnames" }
 
-COMMAND = { (DUO_COMMAND ~ KEY ~ (STRING | INT | BOOL | FLOAT | BLOB)) | (UNI_COMMAND ~ KEY) | SOLO_COMMAND }
+COMMAND = { (DUO_COMMAND ~ ID ~ (STRING | INT | BOOL | FLOAT | BLOB)) | (UNI_COMMAND ~ ID) | SOLO_COMMAND }
 
 LOKIQL_FILE = _{ SOI ~ COMMAND ~ (SEPARATOR ~ COMMAND)* ~ EOI }

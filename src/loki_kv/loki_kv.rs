@@ -16,18 +16,19 @@ pub enum ValueObject {
     BlobData(Vec<u8>),
 }
 
-// Primary Store Structs to store data into page, uses a hashmap
-pub struct LokiKV {
+
+// Equivalent to a table
+pub struct Collection{
     store: HashMap<String, ValueObject>,
 }
 
-impl LokiKV {
-    pub fn new() -> Self {
+impl Collection{
+    fn new() -> Self{
         let store: HashMap<String, ValueObject> = HashMap::new();
-        LokiKV { store }
+        Collection{
+            store
+        }
     }
-
-    // Inserts Data
     pub fn put(&mut self, key: String, value: ValueObject) -> bool {
         let stat = self.store.insert(key, value);
         match stat {
@@ -85,10 +86,80 @@ impl LokiKV {
     pub fn display_collection(&self) -> String {
         let mut data = String::new();
         for (key, val) in self.store.iter() {
-            println!("|{:?}\t\t\t\t|\t\t\t\t{:?}|", key, val);
-            data += &format!("|{:?}\t\t\t\t|\t\t\t\t{:?}|", key, val);
+            data += &format!("{:?} -> {:?}", key, val);
         }
-        data += &format!("-------------------------------------------------------------------");
         return data;
+    }
+}
+
+pub struct LokiKV {
+    collections: HashMap<String, Collection>,
+    current_collection: String,
+}
+
+impl LokiKV {
+    pub fn new() -> Self {
+        let mut collections: HashMap<String, Collection> = HashMap::new();
+        collections.insert("default".to_string(), Collection::new());
+        LokiKV {
+            collections,
+            current_collection: "default".to_string()
+        }
+    }
+
+    pub fn create_collection(&mut self, collection_name: String){
+        self.collections.insert(collection_name, Collection::new());
+    }
+
+    pub fn select_collection(&mut self, key: String){
+        if self.collections.contains_key(&key){
+        self.current_collection = key;
+        }else{
+            panic!("Collection not found!")
+        }
+    }
+
+    pub fn get_current_collection_name(&self) -> String{
+        self.current_collection.clone()
+    }
+
+    pub fn get_current_collection_mut(&mut self) -> &mut Collection{
+        self.collections.get_mut(&self.current_collection).expect("Current collection missing..")
+    }
+
+    pub fn get_current_collection(&self) -> &Collection{
+        self.collections.get(&self.current_collection).expect("Current collection missing..")
+    }
+
+    // Inserts Data
+    pub fn put(&mut self, key: String, value: ValueObject) -> bool {
+        self.get_current_collection_mut().put(key, value)
+    }
+
+    // Gets data
+    pub fn get(&self, key: String) -> Result<&ValueObject, String> {
+        self.get_current_collection().get(key)
+    }
+
+    pub fn incr(&mut self, key: String) -> Result<(), &str> {
+        self.get_current_collection_mut().incr(key)
+    }
+
+    pub fn decr(&mut self, key: String) -> Result<(), &str> {
+        self.get_current_collection_mut().decr(key)
+    }
+
+    // Displays all keys and values
+    pub fn display_collection(&self) -> String {
+        self.get_current_collection().display_collection()
+    }
+
+    pub fn get_all_collection_names(&self) -> String{
+        let mut res: String = String::new();
+        for (key, _) in self.collections.iter(){
+            res += &key.clone();
+            res += "\n";
+        }
+        res
     }
 }

@@ -25,9 +25,9 @@ impl Executor {
     }
 
     // Execute AST
-    pub fn execute(&mut self) -> Vec<Option<ValueObject>> {
+    pub fn execute(&mut self) -> Vec<ValueObject> {
         let db = &self.database;
-        let mut responses: Vec<Option<ValueObject>> = vec![];
+        let mut responses: Vec<ValueObject> = vec![];
         for ast in self.asts.iter_mut() {
             let vc = match ast {
                 Some(v) => v,
@@ -36,22 +36,38 @@ impl Executor {
 
             // Since we already know that we are going to get a phantom value
             if let Some(left_node) = vc.get_left_child() {
-                let response = execute_rec(left_node, db, OpMode::Phantom);
-                responses.push(response);
+                let response_d = execute_rec(left_node, db, OpMode::Phantom, None);
+                match response_d {
+                    Some(res) => {
+                        responses.push(res);
+                    }
+                    None => {}
+                }
             };
 
             if let Some(right_node) = vc.get_right_child() {
-                let response = execute_rec(right_node, db, OpMode::Phantom);
-                responses.push(response);
+                let response_d = execute_rec(right_node, db, OpMode::Phantom, None);
+                match response_d {
+                    Some(res) => {
+                        responses.push(res);
+                    }
+                    None => {}
+                }
             }
         }
         return responses;
     }
 }
 
-fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<ValueObject> {
+fn execute_rec(
+    node: &AST,
+    db: &Arc<RwLock<LokiKV>>,
+    mode: OpMode,
+    key: Option<String>,
+) -> Option<ValueObject> {
+    println!("{:?}", key);
     let val = node.get_value();
-    let mut key = String::new();
+    let mut local_key = String::new();
 
     match val {
         QLValues::QLCommand(cmd) => {
@@ -62,11 +78,20 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
                     let value_node = node.get_right_child();
 
                     if let Some(node) = key_node {
-                        execute_rec(node, db, OpMode::Phantom);
+                        let v = execute_rec(node, db, OpMode::Phantom, None);
+                        println!("{:?}", v);
+                        match v {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(val) = vc {
+                                    local_key = val;
+                                }
+                            }
+                            None => panic!("No Key!"),
+                        }
                     };
 
                     if let Some(node) = value_node {
-                        execute_rec(node, db, OpMode::Write);
+                        execute_rec(node, db, OpMode::Write, Some(local_key));
                     };
                     None
                 }
@@ -75,20 +100,66 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
                     let mut val: ValueObject = ValueObject::Phantom;
 
                     if let Some(node) = key_node {
-                        execute_rec(node, db, OpMode::Read);
+                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
                         let ins = db.read().unwrap();
-                        val = ins.get(key).unwrap().clone();
-                        // println!("{:?}", val);
+                        val = ins.get(local_key).unwrap().clone();
                     };
                     Some(val)
+                }
+                QLCommands::CREATECOL => {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
+                        let mut ins = db.write().unwrap();
+                        ins.create_collection(local_key);
+                    };
+                    None
+                }
+                QLCommands::SELCOL => {
+                    let table_node = node.get_left_child();
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
+                        let mut ins = db.write().unwrap();
+                        ins.select_collection(local_key);
+                    };
+                    None
                 }
                 QLCommands::INCR => {
                     let key_node = node.get_left_child();
 
                     if let Some(node) = key_node {
-                        execute_rec(node, db, OpMode::Read);
+                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
                         let mut ins = db.write().unwrap();
-                        ins.incr(key);
+                        ins.incr(local_key);
                     };
                     None
                 }
@@ -96,9 +167,16 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
                     let key_node = node.get_left_child();
 
                     if let Some(node) = key_node {
-                        execute_rec(node, db, OpMode::Write);
+                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
                         let mut ins = db.write().unwrap();
-                        ins.decr(key);
+                        ins.decr(local_key);
                     };
                     None
                 }
@@ -107,16 +185,29 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
                     let data = ins.display_collection();
                     Some(ValueObject::OutputString(data))
                 }
+                QLCommands::CURCOLNAME => {
+                    let ins = db.read().unwrap();
+                    let data = ins.get_current_collection_name();
+                    Some(ValueObject::OutputString(data))
+                }
+                QLCommands::LISTCOLNAMES => {
+                    let ins = db.read().unwrap();
+                    let data = ins.get_all_collection_names();
+                    Some(ValueObject::OutputString(data))
+                }
             }
         }
-        QLValues::QLKey(key_val) => {
-            key = key_val;
-            None
-        }
+        QLValues::QLId(key_val) => Some(ValueObject::OutputString(key_val)),
         QLValues::QLBool(bool_val) => match mode {
             OpMode::Write => {
                 let mut ins = db.write().unwrap();
-                ins.put(key, ValueObject::BoolData(bool_val));
+                match key {
+                    Some(kv) => {
+                        println!("setting {} to  {}", kv, bool_val);
+                        ins.put(kv, ValueObject::BoolData(bool_val));
+                    }
+                    None => {}
+                }
                 None
             }
             _ => None,
@@ -124,7 +215,13 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
         QLValues::QLInt(int_v) => match mode {
             OpMode::Write => {
                 let mut ins = db.write().unwrap();
-                ins.put(key, ValueObject::IntData(int_v));
+                match key {
+                    Some(kv) => {
+                        println!("setting {} to  {}", kv, int_v);
+                        ins.put(kv, ValueObject::IntData(int_v));
+                    }
+                    None => {}
+                }
                 None
             }
             _ => None,
@@ -132,7 +229,13 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
         QLValues::QLFloat(fl_v) => match mode {
             OpMode::Write => {
                 let mut ins = db.write().unwrap();
-                ins.put(key, ValueObject::DecimalData(fl_v));
+                match key {
+                    Some(kv) => {
+                        println!("setting {} to  {}", kv, fl_v);
+                        ins.put(kv, ValueObject::DecimalData(fl_v));
+                    }
+                    None => {}
+                }
                 None
             }
             _ => None,
@@ -140,7 +243,13 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
         QLValues::QLString(st_v) => match mode {
             OpMode::Write => {
                 let mut ins = db.write().unwrap();
-                ins.put(key, ValueObject::StringData(st_v));
+                match key {
+                    Some(kv) => {
+                        println!("setting {} to  {}", kv, st_v);
+                        ins.put(kv, ValueObject::StringData(st_v));
+                    }
+                    None => {}
+                }
                 None
             }
             _ => None,
@@ -148,7 +257,13 @@ fn execute_rec(node: &AST, db: &Arc<RwLock<LokiKV>>, mode: OpMode) -> Option<Val
         QLValues::QLBlob(data) => match mode {
             OpMode::Write => {
                 let mut ins = db.write().unwrap();
-                ins.put(key, ValueObject::BlobData(data));
+                match key {
+                    Some(kv) => {
+                        println!("setting {} to  {:?}", kv, data);
+                        ins.put(kv, ValueObject::BlobData(data));
+                    }
+                    None => {}
+                }
                 None
             }
             _ => None,
