@@ -15,6 +15,10 @@ pub enum QLCommands {
     INCR,
     DECR,
     DISPLAY,
+    CREATECOL,
+    SELCOL,
+    CURCOLNAME,
+    LISTCOLNAMES
 }
 
 #[derive(Clone, Debug)]
@@ -23,7 +27,7 @@ pub enum QLValues {
     QLInt(isize),
     QLFloat(f64),
     QLString(String),
-    QLKey(String),
+    QLId(String),
     QLCommand(QLCommands),
     QLPhantom,
     QLBlob(Vec<u8>),
@@ -140,12 +144,33 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                     ast_node.unwrap().add_child(node);
                     None
                 }
+                "/createcol" => {
+                    node = QLValues::QLCommand(QLCommands::CREATECOL);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "/selectcol" => {
+                    node = QLValues::QLCommand(QLCommands::SELCOL);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                
                 _ => panic!("Command not supported yet!"),
             }
         }
         Rule::SOLO_COMMAND => match pair.as_str() {
             "DISPLAY" => {
                 let node = QLValues::QLCommand(QLCommands::DISPLAY);
+                ast_node.unwrap().add_child(node);
+                None
+            }
+            "/getcur_colname" => {
+                let node = QLValues::QLCommand(QLCommands::CURCOLNAME);
+                ast_node.unwrap().add_child(node);
+                None
+            }
+            "/listcolnames" => {
+                let node = QLValues::QLCommand(QLCommands::LISTCOLNAMES);
                 ast_node.unwrap().add_child(node);
                 None
             }
@@ -183,9 +208,9 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
             ast_node.unwrap().add_child(node_val);
             None
         }
-        Rule::KEY => {
+        Rule::ID => {
             // println!("KEy here -> {:?}", pair);
-            let node_val = QLValues::QLKey(pair.as_str().to_string());
+            let node_val = QLValues::QLId(pair.as_str().to_string());
             ast_node.unwrap().add_child(node_val);
             None
         }

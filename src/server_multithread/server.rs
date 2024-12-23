@@ -40,9 +40,12 @@ async fn handle_connection(
     let mut ast_exector = Executor::new(db_instance, asts);
     let responses = ast_exector.execute();
 
-    let mut resp_str = String::from("----Query Results----\n");
+    let mut resp_str = String::new();
+    // Improve output result
     for response in responses.iter() {
-        resp_str += &format!("{:?}\n", response);
+        if let val = response {
+            resp_str += &format!("{:?}\n", val);
+        };
     }
     println!("{}", resp_str);
     wr.write_all(resp_str.as_bytes()).await;
