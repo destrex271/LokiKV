@@ -113,7 +113,7 @@ fn execute_rec(
                     };
                     Some(val)
                 }
-                QLCommands::CREATECOL => {
+                QLCommands::CREATEBCOL => {
                     let table_node = node.get_left_child();
 
                     if let Some(node) = table_node {
@@ -126,7 +126,24 @@ fn execute_rec(
                             None => panic!("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
-                        ins.create_collection(local_key);
+                        ins.create_bmap_collection(local_key);
+                    };
+                    None
+                }
+                QLCommands::CREATEHCOL => {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
+                        let mut ins = db.write().unwrap();
+                        ins.create_hmap_collection(local_key);
                     };
                     None
                 }

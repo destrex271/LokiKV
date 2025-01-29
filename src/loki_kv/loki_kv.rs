@@ -194,17 +194,11 @@ impl LokiKV {
         self.collections_bmap.insert(collection_name, Collection::new());
     }
 
-    pub fn select_hmap_collection(&mut self, key: String){
+    pub fn select_collection(&mut self, key: String){
         if self.collections_hmap.contains_key(&key){
-        self.current_collection = key;
-        }else{
-            panic!("Collection not found!")
-        }
-    }
-
-    pub fn select_bmap_collection(&mut self, key: String){
-        if self.collections_bmap.contains_key(&key){
-        self.current_collection = key;
+            self.current_collection = key;
+        }else if self.collections_bmap.contains_key(&key){
+            self.current_collection = key;
         }else{
             panic!("Collection not found!")
         }
