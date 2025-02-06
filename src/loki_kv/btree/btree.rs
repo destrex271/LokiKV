@@ -4,8 +4,7 @@ use std::boxed::Box;
 const CAP: usize = 4;
 
 #[derive(Debug)]
-struct BTreeNode{
-    // Tuples -> only key if internal node, key + value if both
+struct BTreeNode {
     keys: Vec<String>,
     val_start: Option<usize>,
     num_keys: usize,
@@ -27,16 +26,15 @@ impl Clone for BTreeNode {
     }
 }
 
-struct BTree{
+struct BTree {
     root_index: usize,
     vals: Vec<ValueObject>,
     nodes: Vec<BTreeNode>
 }
 
-impl BTreeNode{
-
-    fn new() -> Self{
-        BTreeNode{
+impl BTreeNode {
+    fn new() -> Self {
+        BTreeNode {
             keys: vec!["".to_string(); CAP-1],
             val_start: None,
             num_keys: 0,
@@ -46,174 +44,154 @@ impl BTreeNode{
         }
     }
 
-    fn is_node_full(&self) -> bool{
-        if self.keys.len() == CAP{
-            return true
-        }
-        false
+    fn is_node_full(&self) -> bool {
+        self.num_keys == CAP - 1
     }    
 }
 
-impl BTree{
-    fn new() -> Self{
-        let mut tree = BTree{
+impl BTree {
+    fn new() -> Self {
+        let mut tree = BTree {
             root_index: 0,
             vals: Vec::new(),
             nodes: Vec::new()
         };
-
-        let root_node = BTreeNode::new();
-        tree.root_index = tree.add_node(root_node).unwrap();
+        tree.root_index = tree.add_node(BTreeNode::new()).unwrap();
         tree
     }
 
-    fn get_node(&self, idx: usize) -> BTreeNode{
-        return self.nodes[idx].clone()
+    fn get_node(&self, idx: usize) -> BTreeNode {
+        self.nodes[idx].clone()
     }
     
-    fn add_node(&mut self, node: BTreeNode) -> Option<usize>{
+    fn add_node(&mut self, node: BTreeNode) -> Option<usize> {
         self.nodes.push(node);
         Some(self.nodes.len() - 1)
     }
 
-    fn is_node_full(&mut self, node_idx: usize) -> bool{
+    fn is_node_full(&mut self, node_idx: usize) -> bool {
         self.get_node(node_idx).is_node_full()
     }
 
-    fn replace_node(&mut self, node: BTreeNode, idx: usize){
+    fn replace_node(&mut self, node: BTreeNode, idx: usize) {
         self.nodes[idx] = node;
     }
 
-    fn get_val(&self, idx: usize) -> Option<ValueObject>{
-        if idx >= self.vals.len(){
-            return None
-        }
-        Some(self.vals[idx].clone())
-    }
-
-    fn add_val(&mut self, val_obj: ValueObject) -> Option<usize>{
-        self.vals.push(val_obj);
-        Some(self.vals.len() - 1)
-    }
-
-    fn split_child(&mut self, node_idx: usize, child_idx: usize){
-        let mut node = self.get_node(node_idx);
-        let tru_child_idx = node.children[child_idx].unwrap();
-        let mut child = self.get_node(tru_child_idx);
+    fn split_child(&mut self, node_idx: usize, child_idx: usize) {
+        let mut parent = self.get_node(node_idx);
+        let child_node_idx = parent.children[child_idx].unwrap();
+        let mut child = self.get_node(child_node_idx);
         
-        // Allocate new node
-        let mut sibling = BTreeNode::new();
-        sibling.is_leaf = child.is_leaf; 
-
-        let mid = CAP/2;
-
-        for i in 0..=mid-1{
-            sibling.keys[i] = child.keys[i + mid].clone();
+        let mut new_node = BTreeNode::new();
+        new_node.is_leaf = child.is_leaf;
+        
+        let mid = CAP / 2;
+        
+        // Move keys to new node
+        for i in mid..(CAP-1) {
+            new_node.keys[i-mid] = child.keys[i].clone();
+            child.keys[i] = "".to_string();
         }
-        sibling.num_keys = mid - 1;
-
-        if !child.is_leaf{
-            for j in 0..=mid{
-                sibling.children[j] = child.children[j + mid];
+        
+        // Move children if internal node
+        if !child.is_leaf {
+            for i in mid..CAP {
+                new_node.children[i-mid] = child.children[i];
+                child.children[i] = None;
             }
         }
-        child.num_keys = mid - 1;
-
-        // Commit Sibling to list
-        let sibling_idx = self.add_node(sibling);
-        node.children[child_idx + 1] = sibling_idx;
-
-        for j in (child_idx..=mid-1).rev(){
-            node.keys[j+1] = node.keys[j].clone();
-        }
-
-        node.keys[child_idx] = child.keys[mid].clone();        
-        node.num_keys += 1;
         
-        // Commit Changes
-        self.replace_node(node, node_idx);
-        self.replace_node(child, tru_child_idx);
+        new_node.num_keys = CAP/2 - 1;
+        child.num_keys = mid - 1;
+        
+        // Insert new node
+        let new_node_idx = self.add_node(new_node).unwrap();
+        
+        // Update parent
+        for i in (child_idx..parent.num_keys).rev() {
+            parent.keys[i+1] = parent.keys[i].clone();
+            parent.children[i+2] = parent.children[i+1];
+        }
+        
+        parent.keys[child_idx] = child.keys[mid-1].clone();
+        child.keys[mid-1] = "".to_string();
+        parent.children[child_idx+1] = Some(new_node_idx);
+        parent.num_keys += 1;
+        
+        self.replace_node(child, child_node_idx);
+        self.replace_node(parent, node_idx);
     }
 
-    fn split_root(&mut self){
-        let mut new_root = BTreeNode::new();
-        new_root.children[0] = Some(self.root_index);
-        self.root_index = self.add_node(new_root).unwrap();
-        println!("Created new root!");
-        self.split_child(self.root_index, 0);
-    }
-
-    fn insert_nonfull(&mut self, node_idx: usize, key: String){
+    fn insert_nonfull(&mut self, node_idx: usize, key: String) {
         let mut node = self.get_node(node_idx);
-        if node.is_leaf{
-            // Node used in write mode
-            let mut i: isize = node.num_keys as isize - 1;
-            loop{
-                if i < 0{
-                    break;
-                } 
-                if key >= node.keys[i as usize]{
-                    break;
-                }
-                node.keys[(i + 1) as usize] = node.keys[i as usize].clone();
-                i -= 1;
+        
+        if node.is_leaf {
+            let mut pos = node.num_keys;
+            while pos > 0 && node.keys[pos-1] > key {
+                node.keys[pos] = node.keys[pos-1].clone();
+                pos -= 1;
+            }
+            node.keys[pos] = key;
+            node.num_keys += 1;
+            self.replace_node(node, node_idx);
+        } else {
+            let mut child_idx = node.num_keys;
+            while child_idx > 0 && node.keys[child_idx-1] > key {
+                child_idx -= 1;
             }
             
-            println!("node len is {} {}", node.keys.len(), i);
-            node.keys[(i + 1) as usize] = key;
-            node.num_keys+=1;
-            self.replace_node(node, node_idx);
-        }else{
-            // node used in read-only mode
-            let mut i: isize = node.num_keys as isize;
-            loop{
-                println!("{}", i);
-                if i < 0{
-                    break;
-                } 
-                if key >= node.keys[i as usize]{
-                    break;
-                }
-                i -= 1;
-            }
-            i += 1;
-            let child = self.get_node(i as usize);
-            if child.num_keys == CAP - 1{
-                self.split_child(node_idx, i as usize);
-                if key > node.keys[i as usize]{
-                    i += 1;
+            let next_child_idx = node.children[child_idx].unwrap();
+            if self.is_node_full(next_child_idx) {
+                self.split_child(node_idx, child_idx);
+                node = self.get_node(node_idx);
+                if node.keys[child_idx] < key {
+                    child_idx += 1;
                 }
             }
-            self.insert_nonfull(i as usize, key);
+            self.insert_nonfull(node.children[child_idx].unwrap(), key);
         }
     }
 
-    fn insert(&mut self, key: String){
-        if self.is_node_full(self.root_index){
-            self.split_root();
+    fn insert(&mut self, key: String) {
+        if self.is_node_full(self.root_index) {
+            let new_root = BTreeNode {
+                keys: vec!["".to_string(); CAP-1],
+                val_start: None,
+                num_keys: 0,
+                children: {
+                    let mut v = vec![None; CAP];
+                    v[0] = Some(self.root_index);
+                    v
+                },
+                is_leaf: false,
+                to_right: None
+            };
+            let new_root_idx = self.add_node(new_root).unwrap();
+            self.root_index = new_root_idx;
+            self.split_child(new_root_idx, 0);
         }
         self.insert_nonfull(self.root_index, key);
     }
 
-    fn display_tree(&self, node_idx: usize, level: usize) {
+    fn print_tree(&self) -> String {
+        let mut result = String::new();
+        self.display_tree(self.root_index, 0, &mut result);
+        result
+    }
+
+    fn display_tree(&self, node_idx: usize, level: usize, result: &mut String) {
         let node = self.get_node(node_idx);
+        let keys: Vec<_> = node.keys[..node.num_keys].to_vec();
+        
+        result.push_str(&format!("{:indent$}[Level {}] Keys: {:?}\n", "", level, keys, indent = level * 2));
 
-        // Print the current node's keys
-        println!("{:indent$}[Level {}] Node: {:?}", "", level, node.keys, indent = level * 2);
-
-        if !node.is_leaf && node.num_keys > 0 {
-            // Recursively display the children if not a leaf node
+        if !node.is_leaf {
             for i in 0..=node.num_keys {
                 if let Some(child_idx) = node.children[i] {
-                    self.display_tree(child_idx, level + 1);
+                    self.display_tree(child_idx, level + 1, result);
                 }
             }
         }
-    }
-
-    // Public function to start the tree display from the root
-    fn print_tree(&self) {
-        self.display_tree(self.root_index, 0);
     }
 }
 
@@ -224,15 +202,15 @@ mod tests {
     #[test]
     fn try_btree() {
         let mut tree = BTree::new();
-        tree.print_tree();
-        let data = vec!["test1", "test2", "test3", "test4", "test5", "test6", "test7"];
+        let data = vec!["test1", "test2", "test3", "test4", "test5", "test6", "test7", "test0", "0000", "test-1"];
 
-        for item in data{
-            println!("Inserting ... {}", item);
+        let mut k = String::new();
+        for item in data {
             tree.insert(item.to_string());
-            tree.print_tree();
+            let a = tree.print_tree();
+            k += &a;
+            println!("{}", a);
         }
 
-        tree.print_tree();
     }
 }
