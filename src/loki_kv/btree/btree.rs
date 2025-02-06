@@ -37,11 +37,11 @@ impl BTreeNode{
 
     fn new() -> Self{
         BTreeNode{
-            keys: Vec::with_capacity(CAP - 1),
+            keys: vec!["".to_string(); CAP-1],
             val_start: None,
             num_keys: 0,
-            children: Vec::with_capacity(CAP),
-            is_leaf: false,
+            children: vec![None; CAP],
+            is_leaf: true,
             to_right: None
         }
     }
@@ -139,6 +139,7 @@ impl BTree{
         let mut new_root = BTreeNode::new();
         new_root.children[0] = Some(self.root_index);
         self.root_index = self.add_node(new_root).unwrap();
+        println!("Created new root!");
         self.split_child(self.root_index, 0);
     }
 
@@ -148,13 +149,18 @@ impl BTree{
             // Node used in write mode
             let mut i: isize = node.num_keys as isize - 1;
             loop{
-                if i < 0 && key >= node.keys[i as usize]{
+                if i < 0{
+                    break;
+                } 
+                if key >= node.keys[i as usize]{
                     break;
                 }
-                node.keys[i as usize +1] = node.keys[i as usize].clone();
+                node.keys[(i + 1) as usize] = node.keys[i as usize].clone();
                 i -= 1;
             }
-            node.keys[i as usize +1] = key;
+            
+            println!("node len is {} {}", node.keys.len(), i);
+            node.keys[(i + 1) as usize] = key;
             node.num_keys+=1;
             self.replace_node(node, node_idx);
         }else{
@@ -162,7 +168,10 @@ impl BTree{
             let mut i: isize = node.num_keys as isize;
             loop{
                 println!("{}", i);
-                if i < 0 && key >= node.keys[i as usize]{
+                if i < 0{
+                    break;
+                } 
+                if key >= node.keys[i as usize]{
                     break;
                 }
                 i -= 1;
@@ -192,7 +201,7 @@ impl BTree{
         // Print the current node's keys
         println!("{:indent$}[Level {}] Node: {:?}", "", level, node.keys, indent = level * 2);
 
-        if !node.is_leaf {
+        if !node.is_leaf && node.num_keys > 0 {
             // Recursively display the children if not a leaf node
             for i in 0..=node.num_keys {
                 if let Some(child_idx) = node.children[i] {
@@ -221,6 +230,7 @@ mod tests {
         for item in data{
             println!("Inserting ... {}", item);
             tree.insert(item.to_string());
+            tree.print_tree();
         }
 
         tree.print_tree();
