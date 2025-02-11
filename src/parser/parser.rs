@@ -17,6 +17,7 @@ pub enum QLCommands {
     DISPLAY,
     CREATEHCOL,
     CREATEBCOL,
+    CREATEBCUST,
     SELCOL,
     CURCOLNAME,
     LISTCOLNAMES
@@ -152,6 +153,11 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                 }
                 "/c_bcol" => {
                     node = QLValues::QLCommand(QLCommands::CREATEBCOL);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "/c_bcust" => {
+                    node = QLValues::QLCommand(QLCommands::CREATEBCUST);
                     ast_node.unwrap().add_child(node);
                     None
                 }

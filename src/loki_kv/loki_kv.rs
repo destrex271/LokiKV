@@ -5,6 +5,8 @@ use std::fmt::Debug;
 use std::mem;
 use std::ptr::null;
 
+use super::btree::btree::BTree;
+
 #[derive(Debug, Clone)]
 pub enum ValueObject {
     StringData(String),
@@ -92,6 +94,80 @@ impl CollectionBTree{
     }
 }
 
+// Custom BTree Implementation
+pub struct CollectionBTreeCustom{
+    store: BTree
+}
+
+impl CollectionBTreeCustom{
+    fn new() -> Self{
+        let store: BTree = BTree::new();
+        CollectionBTreeCustom{
+            store
+        }
+    }
+
+    pub fn put(&mut self, key: String, value: ValueObject) -> bool {
+        self.store.insert(key, value);
+        return true;
+        // let stat = self.store.insert(key, value);
+        // match stat {
+        //     Some(stat) => {
+        //         println!("{:?}", stat);
+        //         true
+        //     }
+        //     None => false,
+        // }
+    }
+
+    // Gets data
+    pub fn get(&self, key: String) -> Result<ValueObject, String> {
+        let data = self.store.search(key);
+
+        match data {
+            Some(dt) => Ok(dt),
+            None => Err("no data found!".to_string()),
+        }
+    }
+
+    pub fn incr(&mut self, key: String) -> Result<(), &str> {
+        let val = self.get(key.clone()).unwrap();
+
+        match val {
+            ValueObject::IntData(data) => {
+                self.store.insert(key, ValueObject::IntData(data + 1));
+                Ok(())
+            }
+            ValueObject::DecimalData(data) => {
+                self.store.insert(key, ValueObject::DecimalData(data + 1.0));
+                Ok(())
+            }
+            _ => Err("incr not supported for data type"),
+        }
+    }
+
+    pub fn decr(&mut self, key: String) -> Result<(), &str> {
+        let val = self.get(key.clone()).unwrap();
+
+        match val {
+            ValueObject::IntData(data) => {
+                self.store.insert(key, ValueObject::IntData(data - 1));
+                Ok(())
+            }
+            ValueObject::DecimalData(data) => {
+                self.store.insert(key, ValueObject::DecimalData(data - 1.0));
+                Ok(())
+            }
+            _ => Err("incr not supported for data type"),
+        }
+    }
+
+    // Displays all keys and values
+    pub fn display_collection(&self) -> String {
+        return self.store.print_tree();
+    }
+}
+
 
 // Equivalent to a table
 pub struct Collection{
@@ -171,6 +247,7 @@ impl Collection{
 pub struct LokiKV {
     collections_hmap: HashMap<String, Collection>,
     collections_bmap: HashMap<String, Collection>,
+    collections_bmap_cust: HashMap<String, Collection>,
     current_collection: String,
 }
 
@@ -178,10 +255,12 @@ impl LokiKV {
     pub fn new() -> Self {
         let mut collections_hmap: HashMap<String, Collection> = HashMap::new();
         let mut collections_bmap: HashMap<String, Collection> = HashMap::new();
+        let mut collections_bmap_cust: HashMap<String, Collection> = HashMap::new();
         collections_hmap.insert("default".to_string(), Collection::new());
         LokiKV {
             collections_hmap,
             collections_bmap,
+            collections_bmap_cust,
             current_collection: "default".to_string()
         }
     }
@@ -194,10 +273,16 @@ impl LokiKV {
         self.collections_bmap.insert(collection_name, Collection::new());
     }
 
+    pub fn create_custom_bcol(&mut self, collection_name: String){
+        self.collections_bmap_cust.insert(collection_name, Collection::new());
+    }
+
     pub fn select_collection(&mut self, key: String){
         if self.collections_hmap.contains_key(&key){
             self.current_collection = key;
         }else if self.collections_bmap.contains_key(&key){
+            self.current_collection = key;
+        }else if self.collections_bmap_cust.contains_key(&key){
             self.current_collection = key;
         }else{
             panic!("Collection not found!")
@@ -216,7 +301,12 @@ impl LokiKV {
             None => {
                 match self.collections_bmap.get_mut(&self.current_collection){
                     Some(x) => x,
-                    None => panic!("Not found!")
+                    None => {
+                        match self.collections_bmap_cust.get_mut(&self.current_collection){
+                            Some(x) => x,
+                            None => panic!("Collection does not exist!")
+                        }
+                    } 
                 }
             }
         }
@@ -230,7 +320,12 @@ impl LokiKV {
             None => {
                 match self.collections_bmap.get(&self.current_collection){
                     Some(x) => x,
-                    None => panic!("Not found!")
+                    None => {
+                        match self.collections_bmap_cust.get(&self.current_collection){
+                            Some(x) => x,
+                            None => panic!("Not found!")
+                        }
+                    }
                 }
             }
         }
@@ -266,6 +361,10 @@ impl LokiKV {
             res += "\n";
         }
         for (key, _) in self.collections_bmap.iter(){
+            res += &key.clone();
+            res += "\n";
+        }
+        for (key, _) in self.collections_bmap_cust.iter(){
             res += &key.clone();
             res += "\n";
         }
