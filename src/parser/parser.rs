@@ -15,7 +15,9 @@ pub enum QLCommands {
     INCR,
     DECR,
     DISPLAY,
-    CREATECOL,
+    CREATEHCOL,
+    CREATEBCOL,
+    CREATEBCUST,
     SELCOL,
     CURCOLNAME,
     LISTCOLNAMES
@@ -144,8 +146,18 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                     ast_node.unwrap().add_child(node);
                     None
                 }
-                "/createcol" => {
-                    node = QLValues::QLCommand(QLCommands::CREATECOL);
+                "/c_hcol" => {
+                    node = QLValues::QLCommand(QLCommands::CREATEHCOL);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "/c_bcol" => {
+                    node = QLValues::QLCommand(QLCommands::CREATEBCOL);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "/c_bcust" => {
+                    node = QLValues::QLCommand(QLCommands::CREATEBCUST);
                     ast_node.unwrap().add_child(node);
                     None
                 }
