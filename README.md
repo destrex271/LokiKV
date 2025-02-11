@@ -1,5 +1,4 @@
-# LokiKV
-
+# LokiKV :  ⚠️  WIP
 LokiKV is intended to be a simple to use in memory Key-Value Store that can also persist data on disk.
 This project is specifically for learning purposes only.
 
