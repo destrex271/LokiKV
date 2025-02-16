@@ -5,7 +5,7 @@ use pest::Parser;
 use pest_derive::Parser;
 
 #[derive(Parser)]
-#[grammar = "./parser/lokiql.pest"]
+#[grammar = "./db/parser/lokiql.pest"]
 pub struct LokiQLParser;
 
 #[derive(Clone, Copy, Debug)]
