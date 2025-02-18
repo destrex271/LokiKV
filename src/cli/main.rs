@@ -24,6 +24,30 @@ fn main(){
 
     let mut reader = BufReader::new(stream.try_clone().expect("Failed to clone stream"));
     let mut writer = stream;
+    
+    // Prints welcome message
+    println!(
+    "\n\
+    ╔════════════════════════════════════════════════════╗\n\
+    ║            🚀 Welcome to LokiKV v0.0.1-alpha! 🚀   ║\n\
+    ╠════════════════════════════════════════════════════╣\n\
+    ║ This is a test drive for this key-value store.     ║\n\
+    ║ To learn more about supported commands, check out  ║\n\
+    ║ our README:                                        ║\n\
+    ║ 👉 https://github.com/destrex271/LokiKV            ║\n\
+    ╠════════════════════════════════════════════════════╣\n\
+    ║ 🛠 Found a bug? Raise an issue on GitHub!          ║\n\
+    ║ 🐞 GitHub Issues:                                  ║\n\
+    ║ 👉 https://github.com/destrex271/LokiKV/issues     ║\n\
+    ╠════════════════════════════════════════════════════╣\n\
+    ║ 🚀 Upcoming Features:                              ║\n\
+    ║    🔹 Persistence                                  ║\n\
+    ║    🔹 Distributed storage (in-memory & persistent) ║\n\
+    ╠════════════════════════════════════════════════════╣\n\
+    ║ ✨ Developed by: Akshat Jaimini (destrex271)       ║\n\
+    ╚════════════════════════════════════════════════════╝\n"
+    );
+
 
     loop{
         print!(">>> ");
