@@ -17,15 +17,6 @@ cargo run  --bin client -- localhost 8765
 
 ## Current Features
 
-### Collections
- - Create multiple Collections(similar to tables)
- - Collections are of the following types:
-   - Hashmap
-   - BTreeMap
-   - Custom BTree
- - List collections
- - Select one collection at a time
-
 ### Data Types
  - Blob: `"[BLOB_BEGINS]data of blob[BLOB_ENDS]"`
  - Integer
@@ -47,6 +38,16 @@ cargo run  --bin client -- localhost 8765
 
 
 LokiQL is a custom query language for interacting with the LokiKV database. This document describes the supported commands and their syntax.
+
+## Collections
+ - Create multiple Collections(similar to tables)
+ - Collections are of the following types:
+   - Hashmap
+   - BTreeMap
+   - Custom BTree
+ - List collections
+ - Select one collection at a time
+
 
 ## **Literals**
 
@@ -118,24 +119,28 @@ DISPLAY
 A LokiQL command file follows this structure:
 
 ```plaintext
+COMMAND
+COMMAND
+COMMAND
 COMMAND; COMMAND; COMMAND;
 ```
 
 ### **Example**
 ```plaintext
-SET mykey 'hello';
-GET mykey;
-DISPLAY;
+SET mykey 'hello'
+GET mykey
+DISPLAY
 ```
 
-Each command must be **separated by `;`** if used in a script.
+Multiple command in a single line must be **separated by `;`**.
+Single commands don't need to follow a `;`
 
 ---
 
-This document outlines the LokiQL commands supported by LokiKV. Ensure all commands follow the required syntax to avoid parsing errors.
 
 <hr/>
 
 # TODO
 
  - Add support for distributed setup via Paxos Algorithm
+ - Need to add persistence feature
