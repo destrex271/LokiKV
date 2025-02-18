@@ -5,7 +5,7 @@ use pest::Parser;
 use pest_derive::Parser;
 
 #[derive(Parser)]
-#[grammar = "./parser/lokiql.pest"]
+#[grammar = "./db/parser/lokiql.pest"]
 pub struct LokiQLParser;
 
 #[derive(Clone, Copy, Debug)]
@@ -20,7 +20,8 @@ pub enum QLCommands {
     CREATEBCUST,
     SELCOL,
     CURCOLNAME,
-    LISTCOLNAMES
+    LISTCOLNAMES,
+    EXIT
 }
 
 #[derive(Clone, Debug)]
@@ -183,6 +184,11 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
             }
             "/listcolnames" => {
                 let node = QLValues::QLCommand(QLCommands::LISTCOLNAMES);
+                ast_node.unwrap().add_child(node);
+                None
+            }
+            "EXIT" => {
+                let node = QLValues::QLCommand(QLCommands::EXIT);
                 ast_node.unwrap().add_child(node);
                 None
             }

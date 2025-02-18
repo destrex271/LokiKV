@@ -5,6 +5,7 @@ use std::{
     ops::{Deref, DerefMut},
     sync::{Arc, RwLock},
 };
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::{
     io::{self, AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -24,32 +25,43 @@ async fn handle_connection(
     db_instance: Arc<RwLock<LokiKV>>,
 ) -> Result<(), String> {
     println!("Starting handle....");
-    let (mut rd, mut wr) = io::split(stream);
-    let mut buf = vec![0; 128];
-    let n = rd.read(&mut buf).await.unwrap();
-    if n == 0 {
-        println!("Connection closed!");
-        return Err(String::from("connection closed"));
+    let (rd, mut wr) = stream.into_split();
+    let mut reader = BufReader::new(rd);
+    let mut buf = String::new();
+
+    loop{
+        buf.clear();
+        let n = reader.read_line(&mut buf).await.unwrap();
+        if n == 0 {
+            println!("Connection closed!");
+            return Err(String::from("connection closed"));
+        }
+
+        let request_line = buf.trim().to_string();
+        // let request_line = String::from_utf8(buf[..n].to_vec())
+        //     .map_err(|e| format!("Invalid UTF-8 data: {}", e))
+        //     .unwrap();
+
+        println!("Got {:?}", request_line);
+
+        let asts = parse_lokiql(&request_line);
+        let mut ast_exector = Executor::new(db_instance.clone(), asts);
+        let responses = ast_exector.execute();
+
+        let mut resp_str = String::new();
+        // Improve output result
+        for response in responses.iter() {
+            if let val = response {
+                resp_str += &format!("{:?}\n", val);
+            };
+        }
+
+        resp_str += "<END_OF_RESPONSE>\n";
+        println!("RESPONSE: {}", resp_str);
+        let _ = wr.write_all(resp_str.as_bytes()).await;
+        let _ = wr.flush().await;
+        // println!("Wrote bytes {}", resp_str);
     }
-
-    let request_line = String::from_utf8(buf[..n].to_vec())
-        .map_err(|e| format!("Invalid UTF-8 data: {}", e))
-        .unwrap();
-
-    let asts = parse_lokiql(&request_line);
-    let mut ast_exector = Executor::new(db_instance, asts);
-    let responses = ast_exector.execute();
-
-    let mut resp_str = String::new();
-    // Improve output result
-    for response in responses.iter() {
-        if let val = response {
-            resp_str += &format!("{:?}\n", val);
-        };
-    }
-    println!("{}", resp_str);
-    wr.write_all(resp_str.as_bytes()).await;
-    Ok(())
 }
 
 impl LokiServer {
@@ -78,6 +90,7 @@ impl LokiServer {
 
     pub async fn start_event_loop(&mut self) {
         loop {
+            // println!("HII!!");
             match self.tcp_listener.accept().await {
                 Ok((socket, _)) => {
                     let db = self.db_instance.clone();

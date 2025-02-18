@@ -19,8 +19,8 @@ ID = @{ (!WHITESPACE ~ ANY)+ }
 // Command Types
 DUO_COMMAND  = @{ "SET" }
 UNI_COMMAND  = @{ "GET" | "INCR" | "DECR" | "/c_hcol" | "/c_bcol" | "/c_bcust" | "/selectcol" }
-SOLO_COMMAND = @{ "DISPLAY" | "/getcur_colname" | "/listcolnames" }
+SOLO_COMMAND = @{ "DISPLAY" | "/getcur_colname" | "/listcolnames" | "EXIT"}
 
 COMMAND = { (DUO_COMMAND ~ ID ~ (STRING | INT | BOOL | FLOAT | BLOB)) | (UNI_COMMAND ~ ID) | SOLO_COMMAND }
 
-LOKIQL_FILE = _{ SOI ~ COMMAND ~ (SEPARATOR ~ COMMAND)* ~ EOI }
+LOKIQL_FILE = _{ SOI ~ COMMAND ~ (SEPARATOR+ ~ COMMAND)* ~ EOI }
