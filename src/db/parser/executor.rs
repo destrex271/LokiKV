@@ -93,7 +93,7 @@ fn execute_rec(
                     if let Some(node) = value_node {
                         execute_rec(node, db, OpMode::Write, Some(local_key));
                     };
-                    None
+                    Some(ValueObject::OutputString("SET".to_string()))
                 }
                 QLCommands::GET => {
                     let key_node = node.get_left_child();
@@ -128,7 +128,7 @@ fn execute_rec(
                         let mut ins = db.write().unwrap();
                         ins.create_bmap_collection(local_key);
                     };
-                    None
+                    Some(ValueObject::OutputString("CREATE B-TREE MAP COLLECTION".to_string()))
                 }
                 QLCommands::CREATEBCUST => {
                     let table_node = node.get_left_child();
@@ -145,7 +145,7 @@ fn execute_rec(
                         let mut ins = db.write().unwrap();
                         ins.create_bmap_collection(local_key);
                     };
-                    None
+                    Some(ValueObject::OutputString("CREATE CUSTOM B-TREE MAP COLLECTION".to_string()))
                 }
                 QLCommands::CREATEHCOL => {
                     let table_node = node.get_left_child();
@@ -162,7 +162,7 @@ fn execute_rec(
                         let mut ins = db.write().unwrap();
                         ins.create_hmap_collection(local_key);
                     };
-                    None
+                    Some(ValueObject::OutputString("CREATE CUSTOM H-MAP COLLECTION".to_string()))
                 }
                 QLCommands::SELCOL => {
                     let table_node = node.get_left_child();
@@ -178,7 +178,7 @@ fn execute_rec(
                         let mut ins = db.write().unwrap();
                         ins.select_collection(local_key);
                     };
-                    None
+                    Some(ValueObject::OutputString("SELECT COLUMN".to_string()))
                 }
                 QLCommands::INCR => {
                     let key_node = node.get_left_child();
@@ -195,7 +195,7 @@ fn execute_rec(
                         let mut ins = db.write().unwrap();
                         ins.incr(local_key);
                     };
-                    None
+                    Some(ValueObject::OutputString("INCR".to_string()))
                 }
                 QLCommands::DECR => {
                     let key_node = node.get_left_child();
@@ -212,7 +212,7 @@ fn execute_rec(
                         let mut ins = db.write().unwrap();
                         ins.decr(local_key);
                     };
-                    None
+                    Some(ValueObject::OutputString("DECR".to_string()))
                 }
                 QLCommands::DISPLAY => {
                     let ins = db.read().unwrap();
@@ -228,6 +228,9 @@ fn execute_rec(
                     let ins = db.read().unwrap();
                     let data = ins.get_all_collection_names();
                     Some(ValueObject::OutputString(data))
+                }
+                QLCommands::EXIT => {
+                    todo!("safe exit to be implemented yet!")
                 }
             }
         }
