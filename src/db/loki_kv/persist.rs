@@ -25,12 +25,12 @@ impl StorageEngine{
         let epoch_time = cur_time
             .duration_since(UNIX_EPOCH)
             .expect("Time before epoch"); // Most unlikely
-        println!("epoch_time: {:?}", epoch_time);
+        let filename = format!("{}<{}>.lkvq", self.collection_name.clone(), epoch_time.as_nanos()).to_string();
         
         let db_read = db_instance.read().unwrap();
 
         let collection = db_read.get_collection_by_name(self.collection_name.clone());
         let data = collection.display_collection();
-        println!("{:?}", data);
+        println!("{} {}", filename.clone(), data);
     }
 }
