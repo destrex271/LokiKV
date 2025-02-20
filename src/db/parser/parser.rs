@@ -213,7 +213,7 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
             None
         }
         Rule::BOOL => {
-            let node_val = QLValues::QLString(pair.as_str().parse().unwrap());
+            let node_val = QLValues::QLBool(pair.as_str().parse().unwrap());
             ast_node.unwrap().add_child(node_val);
             // println!("Bool here -> {:?}", pair.as_str());
             None
