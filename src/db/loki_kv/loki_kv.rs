@@ -294,41 +294,11 @@ impl LokiKV {
     }
 
     pub fn get_current_collection_mut(&mut self) -> &mut Collection{
-        match self.collections_hmap.get_mut(&self.current_collection){
-            Some(x) => {
-                x
-            },
-            None => {
-                match self.collections_bmap.get_mut(&self.current_collection){
-                    Some(x) => x,
-                    None => {
-                        match self.collections_bmap_cust.get_mut(&self.current_collection){
-                            Some(x) => x,
-                            None => panic!("Collection does not exist!")
-                        }
-                    } 
-                }
-            }
-        }
+        self.get_collection_by_name_mut(self.current_collection.clone()) 
     }
 
     pub fn get_current_collection(&self) -> &Collection{
-        match self.collections_hmap.get(&self.current_collection){
-            Some(x) => {
-                x
-            },
-            None => {
-                match self.collections_bmap.get(&self.current_collection){
-                    Some(x) => x,
-                    None => {
-                        match self.collections_bmap_cust.get(&self.current_collection){
-                            Some(x) => x,
-                            None => panic!("Not found!")
-                        }
-                    }
-                }
-            }
-        }
+        self.get_collection_by_name(self.current_collection.clone())
     }
 
     // Inserts Data
@@ -370,4 +340,43 @@ impl LokiKV {
         }
         res
     }
+
+    pub fn get_collection_by_name(&self, collection_name: String) -> &Collection{
+        match self.collections_hmap.get(&collection_name){
+            Some(x) => {
+                x
+            },
+            None => {
+                match self.collections_bmap.get(&collection_name){
+                    Some(x) => x,
+                    None => {
+                        match self.collections_bmap_cust.get(&collection_name){
+                            Some(x) => x,
+                            None => panic!("Not found!")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn get_collection_by_name_mut(&mut self, collection_name: String) -> &mut Collection{
+        match self.collections_hmap.get_mut(&collection_name){
+            Some(x) => {
+                x
+            },
+            None => {
+                match self.collections_bmap.get_mut(&collection_name){
+                    Some(x) => x,
+                    None => {
+                        match self.collections_bmap_cust.get_mut(&collection_name){
+                            Some(x) => x,
+                            None => panic!("Collection does not exist!")
+                        }
+                    } 
+                }
+            }
+        }
+    }
+
 }

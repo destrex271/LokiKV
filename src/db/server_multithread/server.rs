@@ -1,5 +1,6 @@
 use crate::loki_kv::loki_kv::{LokiKV, ValueObject};
 use crate::parser::executor::Executor;
+use crate::loki_kv::persist::StorageEngine;
 use crate::parser::parser::parse_lokiql;
 use std::{
     ops::{Deref, DerefMut},
@@ -25,6 +26,7 @@ async fn handle_connection(
     db_instance: Arc<RwLock<LokiKV>>,
 ) -> Result<(), String> {
     println!("Starting handle....");
+    let storage_engine = StorageEngine::new("./target/".to_string(), db_instance.read().unwrap().get_current_collection_name());
     let (rd, mut wr) = stream.into_split();
     let mut reader = BufReader::new(rd);
     let mut buf = String::new();
