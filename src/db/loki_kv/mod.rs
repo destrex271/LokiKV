@@ -1,2 +1,2 @@
 pub mod loki_kv;
-pub mod btree;
+pub mod data_structures;

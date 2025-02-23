@@ -5,7 +5,7 @@ use std::fmt::Debug;
 use std::mem;
 use std::ptr::null;
 
-use super::btree::btree::BTree;
+use super::data_structures::btree::btree::BTree;
 
 #[derive(Debug, Clone)]
 pub enum ValueObject {
