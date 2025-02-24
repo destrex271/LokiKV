@@ -21,6 +21,7 @@ pub enum QLCommands {
     SELCOL,
     CURCOLNAME,
     LISTCOLNAMES,
+    PERSIST,
     SHUTDOWN 
 }
 
@@ -167,7 +168,11 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                     ast_node.unwrap().add_child(node);
                     None
                 }
-                
+                "PERSIST" => {
+                    let node = QLValues::QLCommand(QLCommands::PERSIST);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
                 _ => panic!("Command not supported yet!"),
             }
         }
@@ -252,7 +257,7 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                 // println!("\nPARSED VALUE\n next is {:?}", root_ast);
             };
             return Some(*root);
-        }
+        },
         _ => panic!("Something..."),
     }
 }

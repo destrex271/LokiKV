@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 use std::process;
 
 use crate::{
-    loki_kv::loki_kv::{LokiKV, ValueObject},
+    loki_kv::{loki_kv::{LokiKV, ValueObject}, persist::StorageEngine},
     parser::parser::QLCommands,
 };
 
@@ -214,6 +214,25 @@ fn execute_rec(
                         ins.decr(&local_key);
                     };
                     Some(ValueObject::OutputString("DECR".to_string()))
+                }
+                QLCommands::PERSIST => {
+                    let col_name = node.get_left_child();
+                    
+                    if let Some(node) = col_name{
+                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse column name"),
+                        };
+                        println!("Persisting Collection: {}", local_key);
+                        let storage_engine = StorageEngine::new("./target/".to_string(), local_key);
+                        storage_engine.persist_hmap(db.clone());
+                    };
+
+                    Some(ValueObject::OutputString("PERSIST".to_string()))
                 }
                 QLCommands::DISPLAY => {
                     let ins = db.read().unwrap();
