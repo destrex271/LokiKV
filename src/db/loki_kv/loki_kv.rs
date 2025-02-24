@@ -18,12 +18,21 @@ pub enum ValueObject {
     BlobData(Vec<u8>),
 }
 
+pub trait CollectionProps {
+    fn new() -> Self where Self: Sized;  // Move Sized to this method only
+    fn put(&mut self, key: &str, value: ValueObject) -> bool;
+    fn get(&self, key: &str) -> Option<&ValueObject>; 
+    fn incr(&mut self, key: &str) -> Result<(), &str>; 
+    fn decr(&mut self, key: &str) -> Result<(), &str>;
+    fn display_collection(&self) -> String;
+}
+
 // Table structure with btree as internal store
 pub struct CollectionBTree{
     store: BTreeMap<String, ValueObject>
 }
 
-impl CollectionBTree{
+impl CollectionProps for CollectionBTree{
     fn new() -> Self{
         let store: BTreeMap<String, ValueObject> = BTreeMap::new();
         CollectionBTree{
@@ -31,8 +40,8 @@ impl CollectionBTree{
         }
     }
 
-    pub fn put(&mut self, key: String, value: ValueObject) -> bool {
-        let stat = self.store.insert(key, value);
+    fn put(&mut self, key: &str, value: ValueObject) -> bool {
+        let stat = self.store.insert(key.to_string(), value);
         match stat {
             Some(stat) => {
                 println!("{:?}", stat);
@@ -43,41 +52,36 @@ impl CollectionBTree{
     }
 
     // Gets data
-    pub fn get(&self, key: String) -> Result<&ValueObject, String> {
-        let data = self.store.get(&key);
-
-        match data {
-            Some(dt) => Ok(dt),
-            None => Err("no data found!".to_string()),
-        }
+    fn get(&self, key: &str) -> Option<&ValueObject> {
+        self.store.get(key)
     }
 
-    pub fn incr(&mut self, key: String) -> Result<(), &str> {
-        let val = self.store.get(&key).unwrap();
+    fn incr(&mut self, key: &str) -> Result<(), &str> {
+        let val = self.store.get(key).unwrap();
 
         match val {
             ValueObject::IntData(data) => {
-                self.store.insert(key, ValueObject::IntData(data + 1));
+                self.store.insert(key.to_string(), ValueObject::IntData(data + 1));
                 Ok(())
             }
             ValueObject::DecimalData(data) => {
-                self.store.insert(key, ValueObject::DecimalData(data + 1.0));
+                self.store.insert(key.to_string(), ValueObject::DecimalData(data + 1.0));
                 Ok(())
             }
             _ => Err("incr not supported for data type"),
         }
     }
 
-    pub fn decr(&mut self, key: String) -> Result<(), &str> {
-        let val = self.store.get(&key).unwrap();
+    fn decr(&mut self, key: &str) -> Result<(), &str> {
+        let val = self.store.get(key).unwrap();
 
         match val {
             ValueObject::IntData(data) => {
-                self.store.insert(key, ValueObject::IntData(data - 1));
+                self.store.insert(key.to_string(), ValueObject::IntData(data - 1));
                 Ok(())
             }
             ValueObject::DecimalData(data) => {
-                self.store.insert(key, ValueObject::DecimalData(data - 1.0));
+                self.store.insert(key.to_string(), ValueObject::DecimalData(data - 1.0));
                 Ok(())
             }
             _ => Err("incr not supported for data type"),
@@ -85,7 +89,7 @@ impl CollectionBTree{
     }
 
     // Displays all keys and values
-    pub fn display_collection(&self) -> String {
+    fn display_collection(&self) -> String {
         let mut data = String::new();
         for (key, val) in self.store.iter() {
             data += &format!("{:?} -> {:?}", key, val);
@@ -96,19 +100,21 @@ impl CollectionBTree{
 
 // Custom BTree Implementation
 pub struct CollectionBTreeCustom{
-    store: BTree
+    store: BTree,
+    option_val: Option<ValueObject>
 }
 
-impl CollectionBTreeCustom{
+impl CollectionProps for CollectionBTreeCustom{
     fn new() -> Self{
         let store: BTree = BTree::new();
         CollectionBTreeCustom{
-            store
+            store,
+            option_val: None
         }
     }
 
-    pub fn put(&mut self, key: String, value: ValueObject) -> bool {
-        self.store.insert(key, value);
+    fn put(&mut self, key: &str, value: ValueObject) -> bool {
+        self.store.insert(key.to_string(), value);
         return true;
         // let stat = self.store.insert(key, value);
         // match stat {
@@ -121,41 +127,41 @@ impl CollectionBTreeCustom{
     }
 
     // Gets data
-    pub fn get(&self, key: String) -> Result<ValueObject, String> {
-        let data = self.store.search(key);
+    fn get(&self, key: &str) -> Option<&ValueObject> {
+        let data = match self.store.search(key.to_string()) {
+            Some(value) => Some(value),  // This won't work! See explanation below
+            None => None
+        };
 
-        match data {
-            Some(dt) => Ok(dt),
-            None => Err("no data found!".to_string()),
-        }
+        data
     }
 
-    pub fn incr(&mut self, key: String) -> Result<(), &str> {
+    fn incr(&mut self, key: &str) -> Result<(), &str> {
         let val = self.get(key.clone()).unwrap();
 
         match val {
             ValueObject::IntData(data) => {
-                self.store.insert(key, ValueObject::IntData(data + 1));
+                self.store.insert(key.to_string(), ValueObject::IntData(data + 1));
                 Ok(())
             }
             ValueObject::DecimalData(data) => {
-                self.store.insert(key, ValueObject::DecimalData(data + 1.0));
+                self.store.insert(key.to_string(), ValueObject::DecimalData(data + 1.0));
                 Ok(())
             }
             _ => Err("incr not supported for data type"),
         }
     }
 
-    pub fn decr(&mut self, key: String) -> Result<(), &str> {
+    fn decr(&mut self, key: &str) -> Result<(), &str> {
         let val = self.get(key.clone()).unwrap();
 
         match val {
             ValueObject::IntData(data) => {
-                self.store.insert(key, ValueObject::IntData(data - 1));
+                self.store.insert(key.to_string(), ValueObject::IntData(data - 1));
                 Ok(())
             }
             ValueObject::DecimalData(data) => {
-                self.store.insert(key, ValueObject::DecimalData(data - 1.0));
+                self.store.insert(key.to_string(), ValueObject::DecimalData(data - 1.0));
                 Ok(())
             }
             _ => Err("incr not supported for data type"),
@@ -163,7 +169,7 @@ impl CollectionBTreeCustom{
     }
 
     // Displays all keys and values
-    pub fn display_collection(&self) -> String {
+    fn display_collection(&self) -> String {
         return self.store.print_tree();
     }
 }
@@ -174,15 +180,15 @@ pub struct Collection{
     store: HashMap<String, ValueObject>,
 }
 
-impl Collection{
+impl CollectionProps for Collection{
     fn new() -> Self{
         let store: HashMap<String, ValueObject> = HashMap::new();
         Collection{
             store
         }
     }
-    pub fn put(&mut self, key: String, value: ValueObject) -> bool {
-        let stat = self.store.insert(key, value);
+    fn put(&mut self, key: &str, value: ValueObject) -> bool {
+        let stat = self.store.insert(key.to_string(), value);
         match stat {
             Some(stat) => {
                 println!("{:?}", stat);
@@ -193,41 +199,37 @@ impl Collection{
     }
 
     // Gets data
-    pub fn get(&self, key: String) -> Result<&ValueObject, String> {
-        let data = self.store.get(&key);
-
-        match data {
-            Some(dt) => Ok(dt),
-            None => Err("no data found!".to_string()),
-        }
+    fn get(&self, key: &str) -> Option<&ValueObject> {
+        let data = self.store.get(key);
+        data
     }
 
-    pub fn incr(&mut self, key: String) -> Result<(), &str> {
-        let val = self.store.get(&key).unwrap();
+    fn incr(&mut self, key: &str) -> Result<(), &str> {
+        let val = self.store.get(key).unwrap();
 
         match val {
             ValueObject::IntData(data) => {
-                self.store.insert(key, ValueObject::IntData(data + 1));
+                self.store.insert(key.to_string(), ValueObject::IntData(data + 1));
                 Ok(())
             }
             ValueObject::DecimalData(data) => {
-                self.store.insert(key, ValueObject::DecimalData(data + 1.0));
+                self.store.insert(key.to_string(), ValueObject::DecimalData(data + 1.0));
                 Ok(())
             }
             _ => Err("incr not supported for data type"),
         }
     }
 
-    pub fn decr(&mut self, key: String) -> Result<(), &str> {
-        let val = self.store.get(&key).unwrap();
+    fn decr(&mut self, key: &str) -> Result<(), &str> {
+        let val = self.store.get(key).unwrap();
 
         match val {
             ValueObject::IntData(data) => {
-                self.store.insert(key, ValueObject::IntData(data - 1));
+                self.store.insert(key.to_string(), ValueObject::IntData(data - 1));
                 Ok(())
             }
             ValueObject::DecimalData(data) => {
-                self.store.insert(key, ValueObject::DecimalData(data - 1.0));
+                self.store.insert(key.to_string(), ValueObject::DecimalData(data - 1.0));
                 Ok(())
             }
             _ => Err("incr not supported for data type"),
@@ -235,7 +237,7 @@ impl Collection{
     }
 
     // Displays all keys and values
-    pub fn display_collection(&self) -> String {
+    fn display_collection(&self) -> String {
         let mut data = String::new();
         for (key, val) in self.store.iter() {
             data += &format!("{:?} -> {:?}", key, val);
@@ -246,16 +248,16 @@ impl Collection{
 
 pub struct LokiKV {
     collections_hmap: HashMap<String, Collection>,
-    collections_bmap: HashMap<String, Collection>,
-    collections_bmap_cust: HashMap<String, Collection>,
+    collections_bmap: HashMap<String, CollectionBTree>,
+    collections_bmap_cust: HashMap<String, CollectionBTreeCustom>,
     current_collection: String,
 }
 
 impl LokiKV {
     pub fn new() -> Self {
         let mut collections_hmap: HashMap<String, Collection> = HashMap::new();
-        let mut collections_bmap: HashMap<String, Collection> = HashMap::new();
-        let mut collections_bmap_cust: HashMap<String, Collection> = HashMap::new();
+        let mut collections_bmap: HashMap<String, CollectionBTree> = HashMap::new();
+        let mut collections_bmap_cust: HashMap<String, CollectionBTreeCustom> = HashMap::new();
         collections_hmap.insert("default".to_string(), Collection::new());
         LokiKV {
             collections_hmap,
@@ -270,20 +272,20 @@ impl LokiKV {
     }
 
     pub fn create_bmap_collection(&mut self, collection_name: String){
-        self.collections_bmap.insert(collection_name, Collection::new());
+        self.collections_bmap.insert(collection_name, CollectionBTree::new());
     }
 
     pub fn create_custom_bcol(&mut self, collection_name: String){
-        self.collections_bmap_cust.insert(collection_name, Collection::new());
+        self.collections_bmap_cust.insert(collection_name, CollectionBTreeCustom::new());
     }
 
-    pub fn select_collection(&mut self, key: String){
-        if self.collections_hmap.contains_key(&key){
-            self.current_collection = key;
-        }else if self.collections_bmap.contains_key(&key){
-            self.current_collection = key;
-        }else if self.collections_bmap_cust.contains_key(&key){
-            self.current_collection = key;
+    pub fn select_collection(&mut self, key: &str){
+        if self.collections_hmap.contains_key(key){
+            self.current_collection = key.to_string();
+        }else if self.collections_bmap.contains_key(key){
+            self.current_collection = key.to_string();
+        }else if self.collections_bmap_cust.contains_key(key){
+            self.current_collection = key.to_string();
         }else{
             panic!("Collection not found!")
         }
@@ -293,59 +295,53 @@ impl LokiKV {
         self.current_collection.clone()
     }
 
-    pub fn get_current_collection_mut(&mut self) -> &mut Collection{
-        match self.collections_hmap.get_mut(&self.current_collection){
-            Some(x) => {
-                x
-            },
-            None => {
-                match self.collections_bmap.get_mut(&self.current_collection){
-                    Some(x) => x,
-                    None => {
-                        match self.collections_bmap_cust.get_mut(&self.current_collection){
-                            Some(x) => x,
-                            None => panic!("Collection does not exist!")
-                        }
-                    } 
-                }
-            }
+    pub fn get_current_collection_mut(&mut self) -> &mut dyn CollectionProps {
+        if let Some(x) = self.collections_hmap.get_mut(&self.current_collection) {
+            return x;
         }
+        
+        if let Some(x) = self.collections_bmap.get_mut(&self.current_collection) {
+            return x;
+        }
+        
+        if let Some(x) = self.collections_bmap_cust.get_mut(&self.current_collection) {
+            return x;
+        }
+        
+        panic!("Collection does not exist!")
     }
 
-    pub fn get_current_collection(&self) -> &Collection{
-        match self.collections_hmap.get(&self.current_collection){
-            Some(x) => {
-                x
-            },
-            None => {
-                match self.collections_bmap.get(&self.current_collection){
-                    Some(x) => x,
-                    None => {
-                        match self.collections_bmap_cust.get(&self.current_collection){
-                            Some(x) => x,
-                            None => panic!("Not found!")
-                        }
-                    }
-                }
-            }
+    pub fn get_current_collection(&self) -> &dyn CollectionProps {
+        if let Some(x) = self.collections_hmap.get(&self.current_collection) {
+            return x;
         }
+        
+        if let Some(x) = self.collections_bmap.get(&self.current_collection) {
+            return x;
+        }
+        
+        if let Some(x) = self.collections_bmap_cust.get(&self.current_collection) {
+            return x;
+        }
+        
+        panic!("Collection does not exist!")
     }
 
     // Inserts Data
-    pub fn put(&mut self, key: String, value: ValueObject) -> bool {
+    pub fn put(&mut self, key: &str, value: ValueObject) -> bool {
         self.get_current_collection_mut().put(key, value)
     }
 
     // Gets data
-    pub fn get(&self, key: String) -> Result<&ValueObject, String> {
+    pub fn get(&self, key: &str) -> Option<&ValueObject> {
         self.get_current_collection().get(key)
     }
 
-    pub fn incr(&mut self, key: String) -> Result<(), &str> {
+    pub fn incr(&mut self, key: &str) -> Result<(), &str> {
         self.get_current_collection_mut().incr(key)
     }
 
-    pub fn decr(&mut self, key: String) -> Result<(), &str> {
+    pub fn decr(&mut self, key: &str) -> Result<(), &str> {
         self.get_current_collection_mut().decr(key)
     }
 

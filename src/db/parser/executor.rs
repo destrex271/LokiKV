@@ -110,7 +110,7 @@ fn execute_rec(
                             None => panic!("Unable to parse key"),
                         };
                         let ins = db.read().unwrap();
-                        val = ins.get(local_key).unwrap().clone();
+                        val = ins.get(&local_key).unwrap().clone();
                     };
                     Some(val)
                 }
@@ -144,7 +144,7 @@ fn execute_rec(
                             None => panic!("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
-                        ins.create_bmap_collection(local_key);
+                        ins.create_custom_bcol(local_key);
                     };
                     Some(ValueObject::OutputString("CREATE CUSTOM B-TREE MAP COLLECTION".to_string()))
                 }
@@ -177,7 +177,7 @@ fn execute_rec(
                             None => panic!("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
-                        ins.select_collection(local_key);
+                        ins.select_collection(&local_key);
                     };
                     Some(ValueObject::OutputString("SELECT COLUMN".to_string()))
                 }
@@ -194,7 +194,7 @@ fn execute_rec(
                             None => panic!("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
-                        ins.incr(local_key);
+                        ins.incr(&local_key);
                     };
                     Some(ValueObject::OutputString("INCR".to_string()))
                 }
@@ -211,7 +211,7 @@ fn execute_rec(
                             None => panic!("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
-                        ins.decr(local_key);
+                        ins.decr(&local_key);
                     };
                     Some(ValueObject::OutputString("DECR".to_string()))
                 }
@@ -242,7 +242,7 @@ fn execute_rec(
                 match key {
                     Some(kv) => {
                         println!("setting {} to  {}", kv, bool_val);
-                        ins.put(kv, ValueObject::BoolData(bool_val));
+                        ins.put(&kv, ValueObject::BoolData(bool_val));
                     }
                     None => {}
                 }
@@ -256,7 +256,7 @@ fn execute_rec(
                 match key {
                     Some(kv) => {
                         println!("setting {} to  {}", kv, int_v);
-                        ins.put(kv, ValueObject::IntData(int_v));
+                        ins.put(&kv, ValueObject::IntData(int_v));
                     }
                     None => {}
                 }
@@ -270,7 +270,7 @@ fn execute_rec(
                 match key {
                     Some(kv) => {
                         println!("setting {} to  {}", kv, fl_v);
-                        ins.put(kv, ValueObject::DecimalData(fl_v));
+                        ins.put(&kv, ValueObject::DecimalData(fl_v));
                     }
                     None => {}
                 }
@@ -284,7 +284,7 @@ fn execute_rec(
                 match key {
                     Some(kv) => {
                         println!("setting {} to  {}", kv, st_v);
-                        ins.put(kv, ValueObject::StringData(st_v));
+                        ins.put(&kv, ValueObject::StringData(st_v));
                     }
                     None => {}
                 }
@@ -298,7 +298,7 @@ fn execute_rec(
                 match key {
                     Some(kv) => {
                         println!("setting {} to  {:?}", kv, data);
-                        ins.put(kv, ValueObject::BlobData(data));
+                        ins.put(&kv, ValueObject::BlobData(data));
                     }
                     None => {}
                 }
