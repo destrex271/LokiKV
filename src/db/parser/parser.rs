@@ -21,7 +21,7 @@ pub enum QLCommands {
     SELCOL,
     CURCOLNAME,
     LISTCOLNAMES,
-    EXIT
+    SHUTDOWN 
 }
 
 #[derive(Clone, Debug)]
@@ -187,8 +187,8 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                 ast_node.unwrap().add_child(node);
                 None
             }
-            "EXIT" => {
-                let node = QLValues::QLCommand(QLCommands::EXIT);
+            "SHUTDOWN" => {
+                let node = QLValues::QLCommand(QLCommands::SHUTDOWN);
                 ast_node.unwrap().add_child(node);
                 None
             }

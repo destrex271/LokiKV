@@ -1,4 +1,5 @@
 use std::sync::{Arc, RwLock};
+use std::process;
 
 use crate::{
     loki_kv::loki_kv::{LokiKV, ValueObject},
@@ -229,8 +230,8 @@ fn execute_rec(
                     let data = ins.get_all_collection_names();
                     Some(ValueObject::OutputString(data))
                 }
-                QLCommands::EXIT => {
-                    todo!("safe exit to be implemented yet!")
+                QLCommands::SHUTDOWN => {
+                    process::exit(1);
                 }
             }
         }

@@ -19,7 +19,7 @@ ID = @{ (!WHITESPACE ~ ANY)+ }
 // Command Types
 DUO_COMMAND  = @{ "SET" }
 UNI_COMMAND  = @{ "GET" | "INCR" | "DECR" | "/c_hcol" | "/c_bcol" | "/c_bcust" | "/selectcol" }
-SOLO_COMMAND = @{ "DISPLAY" | "/getcur_colname" | "/listcolnames" | "EXIT"}
+SOLO_COMMAND = @{ "DISPLAY" | "/getcur_colname" | "/listcolnames" | "SHUTDOWN"}
 
 COMMAND = { (DUO_COMMAND ~ ID ~ (STRING | INT | BOOL | FLOAT | BLOB)) | (UNI_COMMAND ~ ID) | SOLO_COMMAND }
 
