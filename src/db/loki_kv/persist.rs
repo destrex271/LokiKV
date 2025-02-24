@@ -31,6 +31,8 @@ impl StorageEngine{
 
         let collection = db_read.get_collection_by_name(self.collection_name.clone());
         let data = collection.display_collection();
-        println!("{} {}", filename.clone(), data);
+        println!("Saving to file: {} {}....", filename.clone(), data);
+
+
     }
 }
