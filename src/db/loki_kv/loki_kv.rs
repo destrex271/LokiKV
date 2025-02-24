@@ -366,43 +366,4 @@ impl LokiKV {
         }
         res
     }
-
-    pub fn get_collection_by_name(&self, collection_name: String) -> &Collection{
-        match self.collections_hmap.get(&collection_name){
-            Some(x) => {
-                x
-            },
-            None => {
-                match self.collections_bmap.get(&collection_name){
-                    Some(x) => x,
-                    None => {
-                        match self.collections_bmap_cust.get(&collection_name){
-                            Some(x) => x,
-                            None => panic!("Not found!")
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn get_collection_by_name_mut(&mut self, collection_name: String) -> &mut Collection{
-        match self.collections_hmap.get_mut(&collection_name){
-            Some(x) => {
-                x
-            },
-            None => {
-                match self.collections_bmap.get_mut(&collection_name){
-                    Some(x) => x,
-                    None => {
-                        match self.collections_bmap_cust.get_mut(&collection_name){
-                            Some(x) => x,
-                            None => panic!("Collection does not exist!")
-                        }
-                    } 
-                }
-            }
-        }
-    }
-
 }
