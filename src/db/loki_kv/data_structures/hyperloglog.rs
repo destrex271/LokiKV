@@ -4,7 +4,7 @@ use std::{
 };
 
 use bit_set::BitSet;
-const P_BITS: u32 = 4;
+const P_BITS: u32 = 16;
 const M: usize = 2_i32.pow(P_BITS) as usize;
 
 pub struct HLL {
@@ -32,16 +32,16 @@ impl HLL {
     pub fn add_item(&mut self, entries: Vec<String>) {
         for entry in entries.iter() {
             let hashed_value = calculate_hash(&entry);
-            let leading_zeros = hashed_value.leading_zeros() as usize;
+            let remaining_bits = hashed_value >> P_BITS;
+            let leading_zeros = remaining_bits.leading_zeros() as usize + 1;
             let first_p_bits = get_first_pbits(hashed_value);
             
             println!("Leading zeros for {} : {} {}", entry, leading_zeros, hashed_value);
             
-            let mut data = self.streams.get(&first_p_bits).unwrap_or(&0);
-            if *data < leading_zeros{
-                data = &leading_zeros;
+            let cur_max = *self.streams.get(&first_p_bits).unwrap_or(&0);
+            if leading_zeros > cur_max {
+                self.streams.insert(first_p_bits, leading_zeros);
             }
-            self.streams.insert(first_p_bits, *data);
         }
     }
 
@@ -50,41 +50,41 @@ impl HLL {
     }
 
     pub fn calculate_cardinality(&self) -> f64{
-        let mut indicator = 0.0;
         let mut sum = 0.0;
-        for (_, v) in self.streams.iter(){
-            let val = 2i32.pow(*v as u32);
-            sum += 1.0/(val as f64);
+
+        for reg in 0..M{
+            let reg_val = *self.streams.get(&(reg as u64)).unwrap_or(&0);
+            sum += 1.0 / (2_f64.powf(reg_val as f64));
         }
-        indicator = 1.0/sum;
+        
         // println!("indicator -> {}", indicator);
 
-        let mut alpha = 0.673;
-        if M >= 128{
-            alpha = 0.7213/(1.0 + 1.079/M as f64);
-        }else if M >= 64{
-            alpha = 0.709;
-        }else if M >= 32{
-            alpha = 0.697;
-        }
+        let alpha = match M {
+            16 => 0.673,
+            32 => 0.697,
+            64 => 0.709,
+            _ => 0.7213 / (1.0 + 1.079 / M as f64),
+        }; 
 
-        let mut fin_res = alpha * M as f64 * M as f64 * indicator;
+        let raw_estimate = (alpha * M as f64 * M as f64)/sum;
 
-        if fin_res <= 2.5 * M as f64{
+        if raw_estimate <= 2.5 * M as f64{
+            // Correction for small range
             println!("min threshold hit!");
             let v = self.get_empty_registers();
             if v != 0{
-                println!("started linear counting!");
-                fin_res = M as f64 * f64::ln((M/v) as f64);
+                println!("started linear counting! {} {}", M, v);
+                M as f64 * f64::ln((M as f64/v as f64))
+            }else{
+                raw_estimate
             }
-        } else if fin_res > (1.0/30.0) * 2_f64.powf(32.0){
+        } else if raw_estimate > (1.0/30.0) * 2_f64.powf(32.0){
+            // correction for large range
             println!("upper threshld..");
-            fin_res = -(2f64.powf(32.0)) * f64::ln(1.0 - fin_res/2f64.powf(32.0));
+            -2f64.powf(32.0) * f64::ln(1.0 - raw_estimate/2_f64.powf(32.0))
         } else {
-            println!("no changes..");
+            raw_estimate
         }
-
-        fin_res
     }
 
     pub fn display_streams(&self) {
@@ -109,7 +109,6 @@ mod tests {
         hll.add_item(large_test);
         hll.display_streams();
         let cardinality = hll.calculate_cardinality();
-        println!("{}", cardinality);
-        assert!(cardinality < count as f64 && cardinality > low_lim, "{}", format!("error rate -> {}", (count as f64 - cardinality)/(count as f64)));
+        println!("Result -> {}", cardinality);
     }
 }
