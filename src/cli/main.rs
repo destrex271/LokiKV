@@ -1,33 +1,37 @@
-use std::{error::Error, io::{self, BufRead, BufReader, Read, Write}, net::TcpStream};
+use std::{
+    error::Error,
+    io::{self, BufRead, BufReader, Read, Write},
+    net::TcpStream,
+};
 
 use clap::Parser;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about=None)]
-struct Args{
+struct Args {
     #[arg(default_value = "localhost")]
     host: String,
     #[arg(default_value_t = 8765)]
-    port: usize
+    port: usize,
 }
 
-fn main(){
+fn main() {
     let args = Args::parse();
     println!("Connecting to {}:{}.....", args.host, args.port);
-    let mut stream = match TcpStream::connect(format!("{}:{}", args.host, args.port)){
+    let mut stream = match TcpStream::connect(format!("{}:{}", args.host, args.port)) {
         Ok(strm) => {
             println!("Connected to LokiKV instance!");
             strm
-        },
-        Err(err) => panic!("Unable to connect! Error: {}", err)
+        }
+        Err(err) => panic!("Unable to connect! Error: {}", err),
     };
 
     let mut reader = BufReader::new(stream.try_clone().expect("Failed to clone stream"));
     let mut writer = stream;
-    
+
     // Prints welcome message
     println!(
-    "\n\
+        "\n\
     ╔════════════════════════════════════════════════════╗\n\
     ║            🚀 Welcome to LokiKV v0.0.1-alpha! 🚀   ║\n\
     ╠════════════════════════════════════════════════════╣\n\
@@ -48,13 +52,12 @@ fn main(){
     ╚════════════════════════════════════════════════════╝\n"
     );
 
-
-    loop{
+    loop {
         print!(">>> ");
         io::stdout().flush().expect("Failed to flush stdout");
 
         let mut buf = String::new();
-        if io::stdin().read_line(&mut buf).is_err(){
+        if io::stdin().read_line(&mut buf).is_err() {
             eprintln!("Couldn't read command");
             continue;
         }
@@ -72,7 +75,7 @@ fn main(){
 
         // println!("Checking response....");
         let mut response = String::new();
-        loop{
+        loop {
             let mut line = String::new();
             if let Ok(bytes) = reader.read_line(&mut line) {
                 if bytes == 0 {
@@ -81,7 +84,7 @@ fn main(){
                 }
 
                 if line.trim() == "<END_OF_RESPONSE>" {
-                    break;  // Stop reading when marker is received
+                    break; // Stop reading when marker is received
                 }
 
                 response.push_str(line.trim());
