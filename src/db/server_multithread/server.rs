@@ -29,7 +29,7 @@ async fn handle_connection(
     let mut reader = BufReader::new(rd);
     let mut buf = String::new();
 
-    loop{
+    loop {
         buf.clear();
         let n = reader.read_line(&mut buf).await.unwrap();
         if n == 0 {
