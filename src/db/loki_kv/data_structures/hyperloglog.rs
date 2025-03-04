@@ -8,7 +8,7 @@ const M: usize = 2_i32.pow(P_BITS) as usize;
 
 pub struct HLL {
     // leading zeros -> Count of elements
-    streams: HashMap<u64, usize>,
+    streams: Vec<usize>,
 }
 
 fn calculate_hash<T: Hash>(t: &T) -> u64 {
@@ -24,7 +24,7 @@ fn get_first_pbits(hashed_val: u64) -> u64 {
 
 impl HLL {
     pub fn new() -> Self {
-        let streams = HashMap::new();
+        let streams = vec![0; M];
         HLL { streams }
     }
 
@@ -33,29 +33,28 @@ impl HLL {
             let hashed_value = calculate_hash(&entry);
             let remaining_bits = hashed_value >> P_BITS;
             let leading_zeros = remaining_bits.leading_zeros() as usize + 1;
-            let first_p_bits = get_first_pbits(hashed_value);
+            let first_p_bits = get_first_pbits(hashed_value) as usize;
 
             println!(
                 "Leading zeros for {} : {} {}",
                 entry, leading_zeros, hashed_value
             );
 
-            let cur_max = *self.streams.get(&first_p_bits).unwrap_or(&0);
-            if leading_zeros > cur_max {
-                self.streams.insert(first_p_bits, leading_zeros);
+            if leading_zeros > self.streams[first_p_bits]{
+                self.streams[first_p_bits] =  leading_zeros;
             }
         }
     }
 
     fn get_empty_registers(&self) -> usize {
-        M - self.streams.len()
+        self.streams.iter().filter(|&&x| x == 0).count()
     }
 
     pub fn calculate_cardinality(&self) -> f64 {
         let mut sum = 0.0;
 
         for reg in 0..M {
-            let reg_val = *self.streams.get(&(reg as u64)).unwrap_or(&0);
+            let reg_val = self.streams[reg];
             sum += 1.0 / (2_f64.powf(reg_val as f64));
         }
 
@@ -68,7 +67,7 @@ impl HLL {
             _ => 0.7213 / (1.0 + 1.079 / M as f64),
         };
 
-        let raw_estimate = (alpha * M as f64 * M as f64) / sum;
+        let raw_estimate = (alpha * M as f64) / sum;
 
         if raw_estimate <= 2.5 * M as f64 {
             // Correction for small range
@@ -83,15 +82,16 @@ impl HLL {
         } else if raw_estimate > (1.0 / 30.0) * 2_f64.powf(32.0) {
             // correction for large range
             println!("upper threshld..");
-            -2f64.powf(32.0) * f64::ln(1.0 - raw_estimate / 2_f64.powf(32.0))
+            -(2f64.powf(32.0)) * f64::ln(1.0 - raw_estimate / 2_f64.powf(32.0))
         } else {
+            println!("no stuff");
             raw_estimate
         }
     }
 
     pub fn display_streams(&self) {
-        for (k, v) in self.streams.iter() {
-            println!("{}: {}", k, v);
+        for v in self.streams.iter() {
+            println!("{}", v);
         }
     }
 }
@@ -103,14 +103,16 @@ mod tests {
     #[test]
     fn try_hll() {
         let mut hll = HLL::new();
-        let count = 100000;
+        let count = 800957;
         let low_lim = count as f64 - count as f64 * 0.05;
+        let high_lim = count as f64 + count as f64 * 0.05;
         let mut large_test: Vec<String> = (0..count)
             .map(|i| String::from(format!("user_{}", i)))
             .collect();
         hll.add_item(large_test);
-        hll.display_streams();
+        // hll.display_streams();
         let cardinality = hll.calculate_cardinality();
-        println!("Result -> {}", cardinality);
+        println!("Result -> {} {}", cardinality, count);
+        assert!(cardinality > low_lim && cardinality < high_lim, "{}", (cardinality - count as f64)/100.0)
     }
 }
