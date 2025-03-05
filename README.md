@@ -44,7 +44,6 @@ cargo run  --bin client -- localhost 8765
 
 # Supported Operations
 
-
 LokiQL is a custom query language for interacting with the LokiKV database. This document describes the supported commands and their syntax.
 
 ## Collections
@@ -77,9 +76,9 @@ LokiQL is a custom query language for interacting with the LokiKV database. This
 LokiQL supports three types of commands:
 
 ### **Duo Commands (Require a Key and a Value)**
-| Command | Syntax |
-|---------|--------|
-| `SET`   | `SET <ID> <STRING | INT | BOOL | FLOAT | BLOB>` |
+| Command | Syntax                                          |
+|---------|-------------------------------------------------|
+| `SET`   | `SET ID (STRING | INT | BOOL | FLOAT | BLOB)` |
 
 #### **Examples**:
 ```plaintext
