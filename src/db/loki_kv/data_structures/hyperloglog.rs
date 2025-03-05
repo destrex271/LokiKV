@@ -40,8 +40,8 @@ impl HLL {
                 entry, leading_zeros, hashed_value
             );
 
-            if leading_zeros > self.streams[first_p_bits]{
-                self.streams[first_p_bits] =  leading_zeros;
+            if leading_zeros > self.streams[first_p_bits] {
+                self.streams[first_p_bits] = leading_zeros;
             }
         }
     }
@@ -113,6 +113,36 @@ mod tests {
         // hll.display_streams();
         let cardinality = hll.calculate_cardinality();
         println!("Result -> {} {}", cardinality, count);
-        assert!(cardinality > low_lim && cardinality < high_lim, "{}", (cardinality - count as f64)/100.0)
+        assert!(
+            cardinality > low_lim && cardinality < high_lim,
+            "{}",
+            (cardinality - count as f64) / 100.0
+        )
+    }
+
+    #[test]
+    fn try_hll_non_unique() {
+        let mut hll = HLL::new();
+        let count = 800000;
+        let low_lim = (1000.0) - (1000.0) * 0.05;
+        let high_lim = (1000.0) + (1000.0) * 0.05;
+        let large_test: Vec<String> = (0..count).map(|i| format!("user_{}", i % 1000)).collect();
+
+        hll.add_item(large_test);
+
+        let cardinality = hll.calculate_cardinality();
+        println!(
+            "Result -> {} {} {} {}",
+            cardinality, count, low_lim, high_lim
+        );
+        assert!(
+            cardinality > low_lim && cardinality < high_lim,
+            "{} {} {} {} {}",
+            cardinality,
+            (cardinality - 1000.0) / 100.0,
+            low_lim,
+            high_lim,
+            count / 1000
+        );
     }
 }
