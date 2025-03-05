@@ -1,5 +1,5 @@
-use std::sync::{Arc, RwLock};
 use std::process;
+use std::sync::{Arc, RwLock};
 
 use crate::{
     loki_kv::loki_kv::{LokiKV, ValueObject},
@@ -129,7 +129,9 @@ fn execute_rec(
                         let mut ins = db.write().unwrap();
                         ins.create_bmap_collection(local_key);
                     };
-                    Some(ValueObject::OutputString("CREATE B-TREE MAP COLLECTION".to_string()))
+                    Some(ValueObject::OutputString(
+                        "CREATE B-TREE MAP COLLECTION".to_string(),
+                    ))
                 }
                 QLCommands::CREATEBCUST => {
                     let table_node = node.get_left_child();
@@ -146,7 +148,9 @@ fn execute_rec(
                         let mut ins = db.write().unwrap();
                         ins.create_custom_bcol(local_key);
                     };
-                    Some(ValueObject::OutputString("CREATE CUSTOM B-TREE MAP COLLECTION".to_string()))
+                    Some(ValueObject::OutputString(
+                        "CREATE CUSTOM B-TREE MAP COLLECTION".to_string(),
+                    ))
                 }
                 QLCommands::CREATEHCOL => {
                     let table_node = node.get_left_child();
@@ -163,7 +167,9 @@ fn execute_rec(
                         let mut ins = db.write().unwrap();
                         ins.create_hmap_collection(local_key);
                     };
-                    Some(ValueObject::OutputString("CREATE CUSTOM H-MAP COLLECTION".to_string()))
+                    Some(ValueObject::OutputString(
+                        "CREATE CUSTOM H-MAP COLLECTION".to_string(),
+                    ))
                 }
                 QLCommands::SELCOL => {
                     let table_node = node.get_left_child();
