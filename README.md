@@ -78,7 +78,7 @@ LokiQL supports three types of commands:
 ### **Duo Commands (Require a Key and a Value)**
 | Command | Syntax                                          |
 |---------|-------------------------------------------------|
-| `SET`   | `SET ID (STRING | INT | BOOL | FLOAT | BLOB)` |
+| `SET`   | `SET ID (STRING / INT / BOOL / FLOAT / BLOB)` |
 
 #### **Examples**:
 ```plaintext
