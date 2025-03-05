@@ -1,4 +1,12 @@
 # LokiKV :  ⚠️  WIP
+
+![Rust Build Test](https://github.com/destrex271/LokiKV/actions/workflows/rust.yml/badge.svg)   
+[![DeepSource](https://app.deepsource.com/gh/destrex271/LokiKV.svg/?label=code+coverage&show_trend=true&token=yNjixD6YddAmWYl3aPWNJV1M)](https://app.deepsource.com/gh/destrex271/LokiKV/)
+[![DeepSource](https://app.deepsource.com/gh/destrex271/LokiKV.svg/?label=active+issues&show_trend=true&token=yNjixD6YddAmWYl3aPWNJV1M)](https://app.deepsource.com/gh/destrex271/LokiKV/)
+[![DeepSource](https://app.deepsource.com/gh/destrex271/LokiKV.svg/?label=resolved+issues&show_trend=true&token=yNjixD6YddAmWYl3aPWNJV1M)](https://app.deepsource.com/gh/destrex271/LokiKV/)
+
+
+
 LokiKV is intended to be a simple to use in memory Key-Value Store that can also persist data on disk.
 This project is specifically for learning purposes only.
 
