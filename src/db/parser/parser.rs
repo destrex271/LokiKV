@@ -34,6 +34,7 @@ pub enum QLValues {
     QLCommand(QLCommands),
     QLPhantom,
     QLBlob(Vec<u8>),
+    QLList(Vec<QLValues>)
 }
 
 #[derive(Debug)]
@@ -49,9 +50,6 @@ impl AST {
     }
 
     fn add_child(&mut self, val: QLValues) {
-        if self.children.len() == 2 {
-            eprintln!("Only 2 children allowed per node!")
-        }
         let new_node = Box::new(AST::new(val));
         self.children.push(new_node);
     }
@@ -230,6 +228,11 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
             // println!("KEy here -> {:?}", pair);
             let node_val = QLValues::QLId(pair.as_str().to_string());
             ast_node.unwrap().add_child(node_val);
+            None
+        }
+        Rule::LIST => {
+            let data = pair.as_str();
+            println!("data recv: {}", data);
             None
         }
         Rule::EOI => None,

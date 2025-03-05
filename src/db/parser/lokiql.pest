@@ -12,6 +12,7 @@ CHAR       =  {
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 BOOL       = @{ "true" | "false" }
+LIST       = @{"[" ~ (INT | FLOAT | BLOB | STRING | CHAR | BOOL) ~ (("," | " ," | ", ") ~ (INT | FLOAT | BLOB | STRING | CHAR | BOOL)+)* ~ "]"}
 
 // Key should be a string without whitespaces
 ID = @{ (!WHITESPACE ~ ANY)+ }
@@ -21,6 +22,6 @@ DUO_COMMAND  = @{ "SET" }
 UNI_COMMAND  = @{ "GET" | "INCR" | "DECR" | "/c_hcol" | "/c_bcol" | "/c_bcust" | "/selectcol" }
 SOLO_COMMAND = @{ "DISPLAY" | "/getcur_colname" | "/listcolnames" | "SHUTDOWN"}
 
-COMMAND = { (DUO_COMMAND ~ ID ~ (STRING | INT | BOOL | FLOAT | BLOB)) | (UNI_COMMAND ~ ID) | SOLO_COMMAND }
+COMMAND = { (DUO_COMMAND ~ ID ~ (STRING | INT | BOOL | FLOAT | BLOB | LIST)) | (UNI_COMMAND ~ ID) | SOLO_COMMAND }
 
 LOKIQL_FILE = _{ SOI ~ COMMAND ~ (SEPARATOR+ ~ COMMAND)* ~ EOI }
