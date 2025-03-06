@@ -19,6 +19,21 @@ pub struct Executor {
     asts: Vec<Option<AST>>,
 }
 
+fn convert_to_value_object(list_data: Vec<QLValues>) -> Vec<ValueObject>{
+    let mut data: Vec<ValueObject> = vec![];
+    for item in list_data{
+        match item{
+            QLValues::QLInt(a) => data.push(ValueObject::IntData(a)),
+            QLValues::QLBool(a) => data.push(ValueObject::BoolData(a)),
+            QLValues::QLFloat(a) => data.push(ValueObject::DecimalData(a)),
+            QLValues::QLString(a) => data.push(ValueObject::StringData(a)),
+            QLValues::QLBlob(a) => data.push(ValueObject::BlobData(a)),
+            _ => println!("no conversions available")
+        }
+    }
+    data
+}
+
 impl Executor {
     // Generates a new executor
     pub fn new(db: Arc<RwLock<LokiKV>>, asts: Vec<Option<AST>>) -> Self {
@@ -78,6 +93,8 @@ fn execute_rec(
                     let key_node = node.get_left_child();
                     let value_node = node.get_right_child();
 
+                    println!("Set {:?} {:?}", key_node, value_node);
+
                     if let Some(node) = key_node {
                         let v = execute_rec(node, db, OpMode::Phantom, None);
                         println!("{:?}", v);
@@ -99,6 +116,7 @@ fn execute_rec(
                 QLCommands::GET => {
                     let key_node = node.get_left_child();
                     let mut val: ValueObject = ValueObject::Phantom;
+                    println!("getting node -> {:?}", key_node);
 
                     if let Some(node) = key_node {
                         let _ = match execute_rec(node, db, OpMode::Read, None) {
@@ -242,6 +260,20 @@ fn execute_rec(
             }
         }
         QLValues::QLId(key_val) => Some(ValueObject::OutputString(key_val)),
+        QLValues::QLList(list_value) => match mode {
+            OpMode::Write => {
+                let mut ins = db.write().unwrap();
+                match key {
+                    Some(kv) => {
+                        println!("setting {} to {:?}", kv, list_value);
+                        ins.put(&kv, ValueObject::ListData(convert_to_value_object(list_value)));
+                        None
+                    },
+                    _ => None
+                }
+            }
+            _ => None
+        }
         QLValues::QLBool(bool_val) => match mode {
             OpMode::Write => {
                 let mut ins = db.write().unwrap();

@@ -16,6 +16,7 @@ pub enum ValueObject {
     DecimalData(f64),
     OutputString(String),
     BlobData(Vec<u8>),
+    ListData(Vec<ValueObject>)
 }
 
 pub trait CollectionProps {
