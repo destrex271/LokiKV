@@ -1,9 +1,10 @@
 // Literals
 WHITESPACE = _{ " " | "\n" | "\r" | "\t" }
 SEPARATOR  = _{ ";" }
+COMMA      = _{"," | ", " | " ,"}
 INT        = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
 FLOAT      = @{ "-"? ~ ASCII_DIGIT+ }
-BLOB       = @{ "[BLOB_BEGINS]" ~ (!"[BLOB_ENDS]" ~ ANY)* ~ "[BLOB_ENDS]" }
+BLOB       = @{ "<BLOB_BEGINS>" ~ (!"<BLOB_ENDS>" ~ ANY)* ~ "<BLOB_ENDS>" }
 STRING     = @{ "'" ~ INNER ~ "'" }
 INNER      = @{ CHAR* }
 CHAR       =  {
@@ -12,7 +13,7 @@ CHAR       =  {
   | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 BOOL       = @{ "true" | "false" }
-LIST       = @{"[" ~ (INT | FLOAT | BLOB | STRING | CHAR | BOOL) ~ (("," | " ," | ", ") ~ (INT | FLOAT | BLOB | STRING | CHAR | BOOL)+)* ~ "]"}
+LIST       = {"[" ~ (INT | FLOAT | BLOB | STRING | CHAR | BOOL) ~ (COMMA ~ (INT | FLOAT | BLOB | STRING | CHAR | BOOL))* ~ "]"}
 
 // Key should be a string without whitespaces
 ID = @{ (!WHITESPACE ~ ANY)+ }

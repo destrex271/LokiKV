@@ -50,7 +50,9 @@ impl AST {
     }
 
     fn add_child(&mut self, val: QLValues) {
+        println!("adding -> {:?}", val);
         let new_node = Box::new(AST::new(val));
+        println!("new node -> {:?}", new_node);
         self.children.push(new_node);
     }
 
@@ -110,6 +112,30 @@ pub fn parse_lokiql(ql: &str) -> Vec<Option<AST>> {
     }
 
     return asts;
+}
+
+pub fn parse_individual_item_asql(pair: Pair<Rule>) -> QLValues{
+    match pair.as_rule() {
+        Rule::FLOAT => {
+            QLValues::QLFloat(pair.as_str().parse().unwrap())
+        }
+        Rule::INT => {
+            QLValues::QLInt(pair.as_str().parse().unwrap())
+        }
+        Rule::STRING => {
+            QLValues::QLString(pair.as_str().to_string())
+        }
+        Rule::BOOL => {
+            QLValues::QLBool(pair.as_str().parse().unwrap())
+        }
+        Rule::BLOB => {
+            let mut val: String = pair.as_str().parse().unwrap();
+            val = val.replace("<BLOB_BEINGS>", "");
+            val = val.replace("<BLOB_ENDS>", "");
+            QLValues::QLBlob(val.as_bytes().to_vec())
+        }
+        _ => panic!("primitive not added")
+    }
 }
 
 pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<AST> {
@@ -218,21 +244,22 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
         }
         Rule::BLOB => {
             let mut val: String = pair.as_str().parse().unwrap();
-            val = val.replace("[BLOB_BEINGS]", "");
-            val = val.replace("[BLOB_ENDS]", "");
+            val = val.replace("<BLOB_BEINGS>", "");
+            val = val.replace("<BLOB_ENDS>", "");
             let node_val = QLValues::QLBlob(val.as_bytes().to_vec());
             ast_node.unwrap().add_child(node_val);
             None
         }
         Rule::ID => {
-            // println!("KEy here -> {:?}", pair);
             let node_val = QLValues::QLId(pair.as_str().to_string());
+            println!("Key -> {:?}", node_val);
             ast_node.unwrap().add_child(node_val);
             None
         }
         Rule::LIST => {
-            let data = pair.as_str();
-            println!("data recv: {}", data);
+            let values: Vec<QLValues> = pair.into_inner().map(parse_individual_item_asql).collect();
+            println!("Value -> {:?}", values);
+            ast_node.unwrap().add_child(QLValues::QLList(values));
             None
         }
         Rule::EOI => None,
