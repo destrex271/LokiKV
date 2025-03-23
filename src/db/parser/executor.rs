@@ -19,16 +19,16 @@ pub struct Executor {
     asts: Vec<Option<AST>>,
 }
 
-fn convert_to_value_object(list_data: Vec<QLValues>) -> Vec<ValueObject>{
+fn convert_to_value_object(list_data: Vec<QLValues>) -> Vec<ValueObject> {
     let mut data: Vec<ValueObject> = vec![];
-    for item in list_data{
-        match item{
+    for item in list_data {
+        match item {
             QLValues::QLInt(a) => data.push(ValueObject::IntData(a)),
             QLValues::QLBool(a) => data.push(ValueObject::BoolData(a)),
             QLValues::QLFloat(a) => data.push(ValueObject::DecimalData(a)),
             QLValues::QLString(a) => data.push(ValueObject::StringData(a)),
             QLValues::QLBlob(a) => data.push(ValueObject::BlobData(a)),
-            _ => println!("no conversions available")
+            _ => println!("no conversions available"),
         }
     }
     data
@@ -266,14 +266,17 @@ fn execute_rec(
                 match key {
                     Some(kv) => {
                         println!("setting {} to {:?}", kv, list_value);
-                        ins.put(&kv, ValueObject::ListData(convert_to_value_object(list_value)));
+                        ins.put(
+                            &kv,
+                            ValueObject::ListData(convert_to_value_object(list_value)),
+                        );
                         None
-                    },
-                    _ => None
+                    }
+                    _ => None,
                 }
             }
-            _ => None
-        }
+            _ => None,
+        },
         QLValues::QLBool(bool_val) => match mode {
             OpMode::Write => {
                 let mut ins = db.write().unwrap();
