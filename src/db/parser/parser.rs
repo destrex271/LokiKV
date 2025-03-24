@@ -4,6 +4,8 @@ use pest::iterators::Pair;
 use pest::Parser;
 use pest_derive::Parser;
 
+use crate::loki_kv::data_structures::hyperloglog::HLL;
+
 #[derive(Parser)]
 #[grammar = "./db/parser/lokiql.pest"]
 pub struct LokiQLParser;
@@ -11,6 +13,7 @@ pub struct LokiQLParser;
 #[derive(Clone, Copy, Debug)]
 pub enum QLCommands {
     SET,
+    ADDHLL,
     GET,
     INCR,
     DECR,
@@ -34,7 +37,8 @@ pub enum QLValues {
     QLCommand(QLCommands),
     QLPhantom,
     QLBlob(Vec<u8>),
-    QLList(Vec<QLValues>)
+    QLList(Vec<QLValues>),
+    QLHLL(HLL)
 }
 
 #[derive(Debug)]
@@ -90,9 +94,9 @@ impl AST {
 }
 
 pub fn parse_lokiql(ql: &str) -> Vec<Option<AST>> {
-    // println!("Data -> {:?}", ql);
+    println!("Data -> {:?}", ql);
     let result = LokiQLParser::parse(Rule::LOKIQL_FILE, ql).unwrap();
-    // println!("{:?}", result);
+    println!("{:?}", result);
 
     let mut asts: Vec<Option<AST>> = vec![];
     for pair in result {
@@ -141,15 +145,20 @@ pub fn parse_individual_item_asql(pair: Pair<Rule>) -> QLValues{
 pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<AST> {
     match pair.as_rule() {
         Rule::DUO_COMMAND => {
-            // println!("Duo command here -> {:?}", pair.as_str());
+            println!("Duo command here -> {:?}", pair.as_str());
             let mut node = QLValues::QLPhantom;
             match pair.as_str() {
                 "SET" => {
                     node = QLValues::QLCommand(QLCommands::SET);
                     ast_node.unwrap().add_child(node);
                     None
-                }
-
+                },
+                "ADDHLL" => {
+                    println!("in set hll");
+                    node = QLValues::QLCommand(QLCommands::ADDHLL);
+                    ast_node.unwrap().add_child(node);
+                    None
+                },
                 _ => panic!("Command not supported yet!"),
             }
         }

@@ -1,11 +1,15 @@
 use std::{
     collections::HashMap,
     hash::{DefaultHasher, Hash, Hasher},
+    fmt::Debug
 };
+
+use crate::loki_kv::loki_kv::ValueObject;
 
 const P_BITS: u32 = 16;
 const M: usize = 2_i32.pow(P_BITS) as usize;
 
+#[derive(Debug, Clone)]
 pub struct HLL {
     // leading zeros -> Count of elements
     streams: Vec<usize>,
@@ -28,21 +32,19 @@ impl HLL {
         HLL { streams }
     }
 
-    pub fn add_item(&mut self, entries: Vec<String>) {
-        for entry in entries.iter() {
-            let hashed_value = calculate_hash(&entry);
-            let remaining_bits = hashed_value >> P_BITS;
-            let leading_zeros = remaining_bits.leading_zeros() as usize + 1;
-            let first_p_bits = get_first_pbits(hashed_value) as usize;
+    pub fn add_item<T: Debug + std::fmt::Display + Hash>(&mut self, entry: T) {
+        let hashed_value = calculate_hash(&entry);
+        let remaining_bits = hashed_value >> P_BITS;
+        let leading_zeros = remaining_bits.leading_zeros() as usize + 1;
+        let first_p_bits = get_first_pbits(hashed_value) as usize;
 
-            println!(
-                "Leading zeros for {} : {} {}",
-                entry, leading_zeros, hashed_value
-            );
+        println!(
+            "Leading zeros for {} : {} {}",
+            entry, leading_zeros, hashed_value
+        );
 
-            if leading_zeros > self.streams[first_p_bits] {
-                self.streams[first_p_bits] = leading_zeros;
-            }
+        if leading_zeros > self.streams[first_p_bits] {
+            self.streams[first_p_bits] = leading_zeros;
         }
     }
 
@@ -109,7 +111,9 @@ mod tests {
         let mut large_test: Vec<String> = (0..count)
             .map(|i| String::from(format!("user_{}", i)))
             .collect();
-        hll.add_item(large_test);
+        for entry in large_test.iter(){
+            hll.add_item(entry);
+        }
         // hll.display_streams();
         let cardinality = hll.calculate_cardinality();
         println!("Result -> {} {}", cardinality, count);
@@ -128,7 +132,9 @@ mod tests {
         let high_lim = (1000.0) + (1000.0) * 0.05;
         let large_test: Vec<String> = (0..count).map(|i| format!("user_{}", i % 1000)).collect();
 
-        hll.add_item(large_test);
+        for entry in large_test.iter(){
+            hll.add_item(entry);
+        }
 
         let cardinality = hll.calculate_cardinality();
         println!(

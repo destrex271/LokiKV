@@ -12,6 +12,7 @@ pub enum OpMode {
     Read,
     Write,
     Phantom,
+    Append,
 }
 
 pub struct Executor {
@@ -110,6 +111,30 @@ fn execute_rec(
 
                     if let Some(node) = value_node {
                         execute_rec(node, db, OpMode::Write, Some(local_key));
+                    };
+                    Some(ValueObject::OutputString("SET".to_string()))
+                }
+                QLCommands::ADDHLL => {
+                    let key_node = node.get_left_child();
+                    let value_node = node.get_right_child();
+
+                    println!("Set {:?} {:?}", key_node, value_node);
+
+                    if let Some(node) = key_node {
+                        let v = execute_rec(node, db, OpMode::Phantom, None);
+                        println!("{:?}", v);
+                        match v {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(val) = vc {
+                                    local_key = val;
+                                }
+                            }
+                            None => panic!("No Key!"),
+                        }
+                    };
+
+                    if let Some(node) = value_node {
+                        execute_rec(node, db, OpMode::Append, Some(local_key));
                     };
                     Some(ValueObject::OutputString("SET".to_string()))
                 }
@@ -269,6 +294,21 @@ fn execute_rec(
                         ins.put(&kv, ValueObject::ListData(convert_to_value_object(list_value)));
                         None
                     },
+                    _ => None
+                }
+            },
+            OpMode::Append => {
+                let mut ins = db.write().unwrap();
+                println!("Appending to hll...");
+                match key {
+                    Some(kv) => {
+                        if let Some(cur_list) = ins.get(&local_key){
+                            if let ValueObject::ListData(new_vec) = cur_list.clone(){
+                                println!("new data -> {:?}", new_vec);
+                            }
+                        }
+                        None
+                    }
                     _ => None
                 }
             }

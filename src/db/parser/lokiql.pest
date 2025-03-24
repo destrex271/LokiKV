@@ -19,8 +19,8 @@ LIST       = {"[" ~ (INT | FLOAT | BLOB | STRING | CHAR | BOOL) ~ (COMMA ~ (INT 
 ID = @{ (!WHITESPACE ~ ANY)+ }
 
 // Command Types
-DUO_COMMAND  = @{ "SET" }
-UNI_COMMAND  = @{ "GET" | "INCR" | "DECR" | "/c_hcol" | "/c_bcol" | "/c_bcust" | "/selectcol" }
+DUO_COMMAND  = @{ "SET" | "ADDHLL" }
+UNI_COMMAND  = @{ "GET" | "INCR" | "DECR" | "/c_hcol" | "/c_bcol" | "/c_bcust" | "/selectcol" | "/c_hll" }
 SOLO_COMMAND = @{ "DISPLAY" | "/getcur_colname" | "/listcolnames" | "SHUTDOWN"}
 
 COMMAND = { (DUO_COMMAND ~ ID ~ (STRING | INT | BOOL | FLOAT | BLOB | LIST)) | (UNI_COMMAND ~ ID) | SOLO_COMMAND }
