@@ -26,11 +26,12 @@ cargo run  --bin client -- localhost 8765
 ## Current Features
 
 ### Data Types
- - Blob: `"[BLOB_BEGINS]data of blob[BLOB_ENDS]"`
+ - Blob: `<BLOB_BEGINS>data of blob<BLOB_ENDS>`
  - Integer
  - Boolean
  - Float
  - String
+ - HyperLogLog: To estimate cardinality
 
 ### Operations
  - Set key values
@@ -66,7 +67,8 @@ LokiQL is a custom query language for interacting with the LokiKV database. This
 - **Float (`FLOAT`)**: Signed or unsigned floating point numbers.
 - **Boolean (`BOOL`)**: `true` or `false`.
 - **String (`STRING`)**: Enclosed in single quotes (`'example'`).
-- **Blob (`BLOB`)**: Enclosed in `[BLOB_BEGINS]` and `[BLOB_ENDS]`.
+- **Blob (`BLOB`)**: Enclosed in `<BLOB_BEGINS>` and `<BLOB_ENDS>`.
+- **HyperLogLog(`HLL`)**: Init by `ADDHLL` command
 
 ## **Identifiers**
 - **ID**: Any string without whitespace.
@@ -79,6 +81,7 @@ LokiQL supports three types of commands:
 | Command | Syntax                                          |
 |---------|-------------------------------------------------|
 | `SET`   | `SET ID (STRING / INT / BOOL / FLOAT / BLOB)` |
+| `ADDHLL`(adds value to a HLL data type)   | `SET ID (STRING / INT / BOOL / FLOAT / BLOB)` |
 
 #### **Examples**:
 ```plaintext
@@ -86,13 +89,14 @@ SET mykey 'hello'
 SET count 42
 SET enabled true
 SET temperature 98.6
-SET file [BLOB_BEGINS]aGVsbG8=[BLOB_ENDS]
+SET file <BLOB_BEGINS>aGVsbG8=<BLOB_ENDS>
 ```
 
 ### **Uni Commands (Require a Key Only)**
 | Command  | Syntax |
 |----------|--------|
 | `GET`    | `GET <ID>` |
+| `HLLCOUNT`(estimated cardinality)    | `HLLCOUNT <ID>` |
 | `INCR`   | `INCR <ID>` |
 | `DECR`   | `DECR <ID>` |
 | `/c_hcol`  | `/c_hcol <ID>` |

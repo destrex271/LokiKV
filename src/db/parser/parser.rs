@@ -4,6 +4,8 @@ use pest::iterators::Pair;
 use pest::Parser;
 use pest_derive::Parser;
 
+use crate::loki_kv::data_structures::hyperloglog::HLL;
+
 #[derive(Parser)]
 #[grammar = "./db/parser/lokiql.pest"]
 pub struct LokiQLParser;
@@ -11,6 +13,7 @@ pub struct LokiQLParser;
 #[derive(Clone, Copy, Debug)]
 pub enum QLCommands {
     SET,
+    ADDHLL,
     GET,
     INCR,
     DECR,
@@ -22,6 +25,7 @@ pub enum QLCommands {
     CURCOLNAME,
     LISTCOLNAMES,
     SHUTDOWN,
+    COUNTHLL,
 }
 
 #[derive(Clone, Debug)]
@@ -34,7 +38,8 @@ pub enum QLValues {
     QLCommand(QLCommands),
     QLPhantom,
     QLBlob(Vec<u8>),
-    QLList(Vec<QLValues>)
+    QLList(Vec<QLValues>),
+    QLHLL(HLL),
 }
 
 #[derive(Debug)]
@@ -90,9 +95,9 @@ impl AST {
 }
 
 pub fn parse_lokiql(ql: &str) -> Vec<Option<AST>> {
-    // println!("Data -> {:?}", ql);
+    println!("Data -> {:?}", ql);
     let result = LokiQLParser::parse(Rule::LOKIQL_FILE, ql).unwrap();
-    // println!("{:?}", result);
+    println!("{:?}", result);
 
     let mut asts: Vec<Option<AST>> = vec![];
     for pair in result {
@@ -114,34 +119,26 @@ pub fn parse_lokiql(ql: &str) -> Vec<Option<AST>> {
     return asts;
 }
 
-pub fn parse_individual_item_asql(pair: Pair<Rule>) -> QLValues{
+pub fn parse_individual_item_asql(pair: Pair<Rule>) -> QLValues {
     match pair.as_rule() {
-        Rule::FLOAT => {
-            QLValues::QLFloat(pair.as_str().parse().unwrap())
-        }
-        Rule::INT => {
-            QLValues::QLInt(pair.as_str().parse().unwrap())
-        }
-        Rule::STRING => {
-            QLValues::QLString(pair.as_str().to_string())
-        }
-        Rule::BOOL => {
-            QLValues::QLBool(pair.as_str().parse().unwrap())
-        }
+        Rule::FLOAT => QLValues::QLFloat(pair.as_str().parse().unwrap()),
+        Rule::INT => QLValues::QLInt(pair.as_str().parse().unwrap()),
+        Rule::STRING => QLValues::QLString(pair.as_str().to_string()),
+        Rule::BOOL => QLValues::QLBool(pair.as_str().parse().unwrap()),
         Rule::BLOB => {
             let mut val: String = pair.as_str().parse().unwrap();
             val = val.replace("<BLOB_BEINGS>", "");
             val = val.replace("<BLOB_ENDS>", "");
             QLValues::QLBlob(val.as_bytes().to_vec())
         }
-        _ => panic!("primitive not added")
+        _ => panic!("primitive not added"),
     }
 }
 
 pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<AST> {
     match pair.as_rule() {
         Rule::DUO_COMMAND => {
-            // println!("Duo command here -> {:?}", pair.as_str());
+            println!("Duo command here -> {:?}", pair.as_str());
             let mut node = QLValues::QLPhantom;
             match pair.as_str() {
                 "SET" => {
@@ -149,7 +146,12 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                     ast_node.unwrap().add_child(node);
                     None
                 }
-
+                "ADDHLL" => {
+                    println!("in set hll");
+                    node = QLValues::QLCommand(QLCommands::ADDHLL);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
                 _ => panic!("Command not supported yet!"),
             }
         }
@@ -168,6 +170,11 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                 }
                 "DECR" => {
                     node = QLValues::QLCommand(QLCommands::DECR);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "HLLCOUNT" => {
+                    node = QLValues::QLCommand(QLCommands::COUNTHLL);
                     ast_node.unwrap().add_child(node);
                     None
                 }
