@@ -25,6 +25,7 @@ pub enum QLCommands {
     CURCOLNAME,
     LISTCOLNAMES,
     SHUTDOWN,
+    COUNTHLL
 }
 
 #[derive(Clone, Debug)]
@@ -177,6 +178,11 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                 }
                 "DECR" => {
                     node = QLValues::QLCommand(QLCommands::DECR);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "HLLCOUNT" => {
+                    node = QLValues::QLCommand(QLCommands::COUNTHLL);
                     ast_node.unwrap().add_child(node);
                     None
                 }
