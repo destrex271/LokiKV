@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
+    fmt::Debug,
     hash::{DefaultHasher, Hash, Hasher},
-    fmt::Debug
 };
 
 use crate::loki_kv::loki_kv::ValueObject;
@@ -111,7 +111,7 @@ mod tests {
         let mut large_test: Vec<String> = (0..count)
             .map(|i| String::from(format!("user_{}", i)))
             .collect();
-        for entry in large_test.iter(){
+        for entry in large_test.iter() {
             hll.add_item(entry);
         }
         // hll.display_streams();
@@ -132,7 +132,7 @@ mod tests {
         let high_lim = (1000.0) + (1000.0) * 0.05;
         let large_test: Vec<String> = (0..count).map(|i| format!("user_{}", i % 1000)).collect();
 
-        for entry in large_test.iter(){
+        for entry in large_test.iter() {
             hll.add_item(entry);
         }
 

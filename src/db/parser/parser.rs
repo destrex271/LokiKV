@@ -25,7 +25,7 @@ pub enum QLCommands {
     CURCOLNAME,
     LISTCOLNAMES,
     SHUTDOWN,
-    COUNTHLL
+    COUNTHLL,
 }
 
 #[derive(Clone, Debug)]
@@ -39,7 +39,7 @@ pub enum QLValues {
     QLPhantom,
     QLBlob(Vec<u8>),
     QLList(Vec<QLValues>),
-    QLHLL(HLL)
+    QLHLL(HLL),
 }
 
 #[derive(Debug)]
@@ -119,27 +119,19 @@ pub fn parse_lokiql(ql: &str) -> Vec<Option<AST>> {
     return asts;
 }
 
-pub fn parse_individual_item_asql(pair: Pair<Rule>) -> QLValues{
+pub fn parse_individual_item_asql(pair: Pair<Rule>) -> QLValues {
     match pair.as_rule() {
-        Rule::FLOAT => {
-            QLValues::QLFloat(pair.as_str().parse().unwrap())
-        }
-        Rule::INT => {
-            QLValues::QLInt(pair.as_str().parse().unwrap())
-        }
-        Rule::STRING => {
-            QLValues::QLString(pair.as_str().to_string())
-        }
-        Rule::BOOL => {
-            QLValues::QLBool(pair.as_str().parse().unwrap())
-        }
+        Rule::FLOAT => QLValues::QLFloat(pair.as_str().parse().unwrap()),
+        Rule::INT => QLValues::QLInt(pair.as_str().parse().unwrap()),
+        Rule::STRING => QLValues::QLString(pair.as_str().to_string()),
+        Rule::BOOL => QLValues::QLBool(pair.as_str().parse().unwrap()),
         Rule::BLOB => {
             let mut val: String = pair.as_str().parse().unwrap();
             val = val.replace("<BLOB_BEINGS>", "");
             val = val.replace("<BLOB_ENDS>", "");
             QLValues::QLBlob(val.as_bytes().to_vec())
         }
-        _ => panic!("primitive not added")
+        _ => panic!("primitive not added"),
     }
 }
 
@@ -153,13 +145,13 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                     node = QLValues::QLCommand(QLCommands::SET);
                     ast_node.unwrap().add_child(node);
                     None
-                },
+                }
                 "ADDHLL" => {
                     println!("in set hll");
                     node = QLValues::QLCommand(QLCommands::ADDHLL);
                     ast_node.unwrap().add_child(node);
                     None
-                },
+                }
                 _ => panic!("Command not supported yet!"),
             }
         }

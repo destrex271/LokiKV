@@ -18,7 +18,7 @@ pub enum ValueObject {
     OutputString(String),
     BlobData(Vec<u8>),
     ListData(Vec<ValueObject>),
-    HLLPointer(HLL)
+    HLLPointer(HLL),
 }
 
 pub trait CollectionProps {
@@ -139,9 +139,9 @@ impl CollectionProps for CollectionBTreeCustom {
     }
 
     fn key_exists(&self, key: &str) -> bool {
-        match self.store.search(key.to_string()){
+        match self.store.search(key.to_string()) {
             None => false,
-            Some(_) => true
+            Some(_) => true,
         }
     }
 

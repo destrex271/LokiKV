@@ -14,7 +14,7 @@ pub enum OpMode {
     Write,
     Phantom,
     Append,
-    AppendHLL 
+    AppendHLL,
 }
 
 pub struct Executor {
@@ -22,16 +22,16 @@ pub struct Executor {
     asts: Vec<Option<AST>>,
 }
 
-fn convert_to_value_object(list_data: Vec<QLValues>) -> Vec<ValueObject>{
+fn convert_to_value_object(list_data: Vec<QLValues>) -> Vec<ValueObject> {
     let mut data: Vec<ValueObject> = vec![];
-    for item in list_data{
-        match item{
+    for item in list_data {
+        match item {
             QLValues::QLInt(a) => data.push(ValueObject::IntData(a)),
             QLValues::QLBool(a) => data.push(ValueObject::BoolData(a)),
             QLValues::QLFloat(a) => data.push(ValueObject::DecimalData(a)),
             QLValues::QLString(a) => data.push(ValueObject::StringData(a)),
             QLValues::QLBlob(a) => data.push(ValueObject::BlobData(a)),
-            _ => println!("no conversions available")
+            _ => println!("no conversions available"),
         }
     }
     data
@@ -156,12 +156,16 @@ fn execute_rec(
                             None => panic!("Unable to parse key"),
                         };
                         let ins = db.read().unwrap();
-                        if let Some(vd) = ins.get(&local_key){
-                            match vd{
+                        if let Some(vd) = ins.get(&local_key) {
+                            match vd {
                                 ValueObject::HLLPointer(hll_obj) => {
                                     val = ValueObject::DecimalData(hll_obj.calculate_cardinality());
                                 }
-                                _ => val = ValueObject::OutputString("ERROR: Value is not of type HLL".to_string())
+                                _ => {
+                                    val = ValueObject::OutputString(
+                                        "ERROR: Value is not of type HLL".to_string(),
+                                    )
+                                }
                             }
                         }
                     };
@@ -320,12 +324,15 @@ fn execute_rec(
                 match key {
                     Some(kv) => {
                         println!("setting {} to {:?}", kv, list_value);
-                        ins.put(&kv, ValueObject::ListData(convert_to_value_object(list_value)));
+                        ins.put(
+                            &kv,
+                            ValueObject::ListData(convert_to_value_object(list_value)),
+                        );
                         None
-                    },
-                    _ => None
+                    }
+                    _ => None,
                 }
-            },
+            }
             // OpMode::AppendHLL => {
             //     let mut ins = db.write().unwrap();
             //     match key{
@@ -350,18 +357,18 @@ fn execute_rec(
                 println!("Appending to hll...");
                 match key {
                     Some(kv) => {
-                        if let Some(cur_list) = ins.get(&local_key){
-                            if let ValueObject::ListData(new_vec) = cur_list.clone(){
+                        if let Some(cur_list) = ins.get(&local_key) {
+                            if let ValueObject::ListData(new_vec) = cur_list.clone() {
                                 println!("new data -> {:?}", new_vec);
                             }
                         }
                         None
                     }
-                    _ => None
+                    _ => None,
                 }
             }
-            _ => None
-        }
+            _ => None,
+        },
         QLValues::QLBool(bool_val) => match mode {
             OpMode::Write => {
                 let mut ins = db.write().unwrap();
@@ -376,12 +383,12 @@ fn execute_rec(
             }
             OpMode::AppendHLL => {
                 let mut ins = db.write().unwrap();
-                match key{
+                match key {
                     Some(kv) => {
                         // get value at key
                         println!("HLL here -> {}", kv);
-                        if let Some(vb) = ins.get(&kv){
-                            match vb{
+                        if let Some(vb) = ins.get(&kv) {
+                            match vb {
                                 ValueObject::HLLPointer(hll_obj) => {
                                     let mut mhll_obj = hll_obj.clone();
                                     mhll_obj.add_item(bool_val);
@@ -389,13 +396,12 @@ fn execute_rec(
                                 }
                                 _ => {}
                             }
-                        }else{
+                        } else {
                             // Since hll pointer not found at key, we will change the value at that key
                             let mut mhll_obj = HLL::new();
                             mhll_obj.add_item(bool_val);
                             ins.put(&kv, ValueObject::HLLPointer(mhll_obj));
                         }
-
                     }
                     _ => {}
                 }
@@ -411,18 +417,18 @@ fn execute_rec(
                         println!("setting {} to  {}", kv, int_v);
                         ins.put(&kv, ValueObject::IntData(int_v));
                     }
-                    _ => {},
+                    _ => {}
                 }
                 None
             }
             OpMode::AppendHLL => {
                 let mut ins = db.write().unwrap();
-                match key{
+                match key {
                     Some(kv) => {
                         // get value at key
                         println!("HLL here -> {}", kv);
-                        if let Some(vb) = ins.get(&kv){
-                            match vb{
+                        if let Some(vb) = ins.get(&kv) {
+                            match vb {
                                 ValueObject::HLLPointer(hll_obj) => {
                                     let mut mhll_obj = hll_obj.clone();
                                     mhll_obj.add_item(int_v);
@@ -430,13 +436,12 @@ fn execute_rec(
                                 }
                                 _ => {}
                             }
-                        }else{
+                        } else {
                             // Since hll pointer not found at key, we will change the value at that key
                             let mut mhll_obj = HLL::new();
                             mhll_obj.add_item(int_v);
                             ins.put(&kv, ValueObject::HLLPointer(mhll_obj));
                         }
-
                     }
                     _ => {}
                 }
@@ -499,12 +504,12 @@ fn execute_rec(
             }
             OpMode::AppendHLL => {
                 let mut ins = db.write().unwrap();
-                match key{
+                match key {
                     Some(kv) => {
                         // get value at key
                         println!("HLL here -> {}", kv);
-                        if let Some(vb) = ins.get(&kv){
-                            match vb{
+                        if let Some(vb) = ins.get(&kv) {
+                            match vb {
                                 ValueObject::HLLPointer(hll_obj) => {
                                     let mut mhll_obj = hll_obj.clone();
                                     mhll_obj.add_item(st_v);
@@ -512,19 +517,18 @@ fn execute_rec(
                                 }
                                 _ => {}
                             }
-                        }else{
+                        } else {
                             // Since hll pointer not found at key, we will change the value at that key
                             let mut mhll_obj = HLL::new();
                             mhll_obj.add_item(st_v);
                             ins.put(&kv, ValueObject::HLLPointer(mhll_obj));
                         }
-
                     }
                     _ => {}
                 }
                 None
             }
-            _ => None            
+            _ => None,
         },
         QLValues::QLBlob(data) => match mode {
             OpMode::Write => {
@@ -565,7 +569,6 @@ fn execute_rec(
             //     }
             //     None
             // }
-            
             _ => None,
         },
         _ => {
