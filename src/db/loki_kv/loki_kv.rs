@@ -6,6 +6,7 @@ use std::mem;
 use std::ptr::null;
 
 use super::data_structures::btree::btree::BTree;
+use super::data_structures::hyperloglog::HLL;
 
 #[derive(Debug, Clone)]
 pub enum ValueObject {
@@ -17,6 +18,7 @@ pub enum ValueObject {
     OutputString(String),
     BlobData(Vec<u8>),
     ListData(Vec<ValueObject>),
+    HLLPointer(HLL),
 }
 
 pub trait CollectionProps {
@@ -25,6 +27,7 @@ pub trait CollectionProps {
         Self: Sized; // Move Sized to this method only
     fn put(&mut self, key: &str, value: ValueObject) -> bool;
     fn get(&self, key: &str) -> Option<&ValueObject>;
+    fn key_exists(&self, key: &str) -> bool;
     fn incr(&mut self, key: &str) -> Result<(), &str>;
     fn decr(&mut self, key: &str) -> Result<(), &str>;
     fn display_collection(&self) -> String;
@@ -55,6 +58,10 @@ impl CollectionProps for CollectionBTree {
     // Gets data
     fn get(&self, key: &str) -> Option<&ValueObject> {
         self.store.get(key)
+    }
+
+    fn key_exists(&self, key: &str) -> bool {
+        self.store.contains_key(key)
     }
 
     fn incr(&mut self, key: &str) -> Result<(), &str> {
@@ -131,6 +138,13 @@ impl CollectionProps for CollectionBTreeCustom {
         // }
     }
 
+    fn key_exists(&self, key: &str) -> bool {
+        match self.store.search(key.to_string()) {
+            None => false,
+            Some(_) => true,
+        }
+    }
+
     // Gets data
     fn get(&self, key: &str) -> Option<&ValueObject> {
         let data = match self.store.search(key.to_string()) {
@@ -202,6 +216,10 @@ impl CollectionProps for Collection {
             }
             None => false,
         }
+    }
+
+    fn key_exists(&self, key: &str) -> bool {
+        self.store.contains_key(key)
     }
 
     // Gets data
