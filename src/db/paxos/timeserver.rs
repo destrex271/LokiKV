@@ -1,4 +1,5 @@
 use chrono::{DateTime, Local};
+use rsntp::SntpClient;
 
 struct TTInterval {
     earliest: usize,
@@ -10,4 +11,19 @@ trait timeserver {
     fn now() -> Option<TTInterval>;
     fn after() -> bool;
     fn before() -> bool;
+}
+
+struct NTPTimeServer{
+    identifier: String,
+    client: SntpClient
+}
+
+impl timeserver for NTPTimeServer{
+    fn new() -> Self{
+        let client = SntpClient::new();
+        NTPTimeServer { identifier: "id-TODO", client }
+    }
+    fn now() -> Option<TTInterval>{}
+    fn after() -> bool{}
+    fn before() -> bool{}
 }
