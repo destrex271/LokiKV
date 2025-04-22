@@ -247,6 +247,25 @@ fn execute_rec(
                         "CREATE CUSTOM H-MAP COLLECTION".to_string(),
                     ))
                 }
+                QLCommands::PERSIST=> {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
+                        let mut ins = db.write().unwrap();
+                        
+                    };
+                    Some(ValueObject::OutputString(
+                        "CREATE B-TREE MAP COLLECTION".to_string(),
+                    ))
+                }
                 QLCommands::SELCOL => {
                     let table_node = node.get_left_child();
                     if let Some(node) = table_node {

@@ -38,11 +38,6 @@ impl HLL {
         let leading_zeros = remaining_bits.leading_zeros() as usize + 1;
         let first_p_bits = get_first_pbits(hashed_value) as usize;
 
-        println!(
-            "Leading zeros for {} : {} {}",
-            entry, leading_zeros, hashed_value
-        );
-
         if leading_zeros > self.streams[first_p_bits] {
             self.streams[first_p_bits] = leading_zeros;
         }
@@ -116,7 +111,7 @@ mod tests {
         }
         // hll.display_streams();
         let cardinality = hll.calculate_cardinality();
-        println!("Result -> {} {}", cardinality, count);
+        // println!("Result -> {} {}", cardinality, count);
         assert!(
             cardinality > low_lim && cardinality < high_lim,
             "{}",

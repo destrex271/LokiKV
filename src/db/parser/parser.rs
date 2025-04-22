@@ -26,6 +26,7 @@ pub enum QLCommands {
     LISTCOLNAMES,
     SHUTDOWN,
     COUNTHLL,
+    PERSIST,
 }
 
 #[derive(Clone, Debug)]
@@ -198,7 +199,11 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                     ast_node.unwrap().add_child(node);
                     None
                 }
-
+                "PERSIST" => {
+                    node = QLValues::QLCommand(QLCommands::PERSIST);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
                 _ => panic!("Command not supported yet!"),
             }
         }
