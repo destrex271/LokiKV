@@ -102,17 +102,10 @@ pub fn parse_lokiql(ql: &str) -> Vec<Option<AST>> {
     let mut asts: Vec<Option<AST>> = vec![];
     for pair in result {
         // println!("HERE -----> {:?}", pair);
-        match pair.as_rule() {
-            // Parse Each command
-            Rule::COMMAND => {
-                // println!("Sending {:?}", pair);
-                let ast = parse_vals(pair, None);
-                asts.push(ast);
-            }
-            // Rule::EOI => println!("End of File"),
-            _ => {
-                // println!("Something not for sending -> {:?}", pair)
-            }
+        if let Rule::COMMAND = pair.as_rule() {
+            // println!("Sending {:?}", pair);
+            let ast = parse_vals(pair, None);
+            asts.push(ast);
         }
     }
 
