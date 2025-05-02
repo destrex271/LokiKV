@@ -115,7 +115,7 @@ impl CollectionProps for CollectionBTree {
     fn generate_pairs(&self) -> Vec<(String, ValueObject)> {
         let mut data: Vec<(String, ValueObject)> = vec![];
         for (key, val) in self.store.iter() {
-            data.push((key.to_string(), val.clone())); 
+            data.push((key.to_string(), val.clone()));
         }
         return data;
     }
@@ -207,7 +207,7 @@ impl CollectionProps for CollectionBTreeCustom {
     fn display_collection(&self) -> String {
         return self.store.print_tree();
     }
-    
+
     fn generate_pairs(&self) -> Vec<(String, ValueObject)> {
         let mut data: Vec<(String, ValueObject)> = vec![];
         self.store.generate_pairs(0, data.as_mut());
@@ -296,7 +296,7 @@ impl CollectionProps for Collection {
     fn generate_pairs(&self) -> Vec<(String, ValueObject)> {
         let mut data: Vec<(String, ValueObject)> = vec![];
         for (key, val) in self.store.iter() {
-            data.push((key.to_string(), val.clone())); 
+            data.push((key.to_string(), val.clone()));
         }
         return data;
     }
