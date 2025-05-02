@@ -36,7 +36,14 @@ impl StoragePage {
             Err(_) => panic!("failed to create"),
         };
 
-        match fs::write(path, format!("{:?}", self.content).as_bytes()) {
+        let mut json_content = String::new();
+        json_content += "{\n";
+        for entry in self.content.iter() {
+            json_content += format!("\"{}\": {:?},\n", entry.0, entry.1).as_str();
+        }
+        json_content += "}";
+
+        match fs::write(path, format!("{}", json_content).as_bytes()) {
             Err(err) => panic!("Error: {}", err),
             Ok(_) => println!("written to file"),
         };

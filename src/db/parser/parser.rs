@@ -231,12 +231,14 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
             _ => panic!("Support for command not added"),
         },
         Rule::FLOAT => {
+            println!("num reached int: {:?} ", pair);
             let node_val = QLValues::QLFloat(pair.as_str().parse().unwrap());
             ast_node.unwrap().add_child(node_val);
             // println!("Float here -> {:?}", pair.as_str());
             None
         }
         Rule::INT => {
+            println!("num reached int: {:?} ", pair);
             let node_val = QLValues::QLInt(pair.as_str().parse().unwrap());
             ast_node.unwrap().add_child(node_val);
             // println!("Int here -> {:?}", pair.as_str());
