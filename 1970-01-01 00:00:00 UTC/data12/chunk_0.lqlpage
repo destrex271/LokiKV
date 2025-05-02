@@ -1,0 +1,5 @@
+{
+"data": IntData(19),
+,"data": IntData(12),
+,"data": ListData([IntData(1), DecimalData(1.2)]),
+}

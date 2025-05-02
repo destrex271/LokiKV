@@ -31,9 +31,11 @@ pub trait CollectionProps {
     fn incr(&mut self, key: &str) -> Result<(), &str>;
     fn decr(&mut self, key: &str) -> Result<(), &str>;
     fn display_collection(&self) -> String;
+    fn generate_pairs(&self) -> Vec<(String, ValueObject)>;
 }
 
 // Table structure with btree as internal store
+#[derive(Clone)]
 pub struct CollectionBTree {
     store: BTreeMap<String, ValueObject>,
 }
@@ -108,9 +110,19 @@ impl CollectionProps for CollectionBTree {
         }
         return data;
     }
+
+    // generate key-value pairs to write to pages
+    fn generate_pairs(&self) -> Vec<(String, ValueObject)> {
+        let mut data: Vec<(String, ValueObject)> = vec![];
+        for (key, val) in self.store.iter() {
+            data.push((key.to_string(), val.clone()));
+        }
+        return data;
+    }
 }
 
 // Custom BTree Implementation
+#[derive(Clone)]
 pub struct CollectionBTreeCustom {
     store: BTree,
     option_val: Option<ValueObject>,
@@ -195,9 +207,16 @@ impl CollectionProps for CollectionBTreeCustom {
     fn display_collection(&self) -> String {
         return self.store.print_tree();
     }
+
+    fn generate_pairs(&self) -> Vec<(String, ValueObject)> {
+        let mut data: Vec<(String, ValueObject)> = vec![];
+        self.store.generate_pairs(0, data.as_mut());
+        return data;
+    }
 }
 
 // Equivalent to a table
+#[derive(Clone)]
 pub struct Collection {
     store: HashMap<String, ValueObject>,
 }
@@ -269,6 +288,15 @@ impl CollectionProps for Collection {
         let mut data = String::new();
         for (key, val) in self.store.iter() {
             data += &format!("{:?} -> {:?}", key, val);
+        }
+        return data;
+    }
+
+    // generate key-value pairs to write to pages
+    fn generate_pairs(&self) -> Vec<(String, ValueObject)> {
+        let mut data: Vec<(String, ValueObject)> = vec![];
+        for (key, val) in self.store.iter() {
+            data.push((key.to_string(), val.clone()));
         }
         return data;
     }

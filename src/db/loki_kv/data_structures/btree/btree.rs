@@ -26,6 +26,7 @@ impl Clone for BTreeNode {
     }
 }
 
+#[derive(Clone)]
 pub struct BTree {
     root_index: usize,
     vals: Vec<ValueObject>,
@@ -206,6 +207,24 @@ impl BTree {
             for i in 0..=node.num_keys {
                 if let Some(child_idx) = node.children[i] {
                     self.display_tree(child_idx, result);
+                }
+            }
+        }
+    }
+
+    pub fn generate_pairs(&self, node_idx: usize, result: &mut Vec<(String, ValueObject)>) {
+        let node = self.get_node(node_idx);
+
+        // Append key -> value pairs
+        for i in 0..node.num_keys {
+            result.push((node.keys[i].clone(), node.values[i].clone()));
+        }
+
+        // Recursively traverse child nodes if not a leaf
+        if !node.is_leaf {
+            for i in 0..=node.num_keys {
+                if let Some(child_idx) = node.children[i] {
+                    self.generate_pairs(child_idx, result);
                 }
             }
         }

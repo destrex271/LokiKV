@@ -79,7 +79,7 @@ fn main() {
             let mut line = String::new();
             if let Ok(bytes) = reader.read_line(&mut line) {
                 if bytes == 0 {
-                    println!("Server closed connection.");
+                    println!("Seems like there was an error! Please try again..");
                     return;
                 }
 

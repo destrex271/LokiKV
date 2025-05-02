@@ -1,7 +1,9 @@
 use std::process;
 use std::sync::{Arc, RwLock};
+use std::time::SystemTime;
 
 use crate::loki_kv::data_structures::hyperloglog::HLL;
+use crate::loki_kv::persist::Persistor;
 use crate::{
     loki_kv::loki_kv::{LokiKV, ValueObject},
     parser::parser::QLCommands,
@@ -20,6 +22,14 @@ pub enum OpMode {
 pub struct Executor {
     database: Arc<RwLock<LokiKV>>,
     asts: Vec<Option<AST>>,
+    persistor: Persistor,
+}
+
+fn get_cur_timestamp_as_str() -> String {
+    match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(n) => format!("1970-01-01 00:00:00 UTC"),
+        Err(_) => panic!("SystemTime before UNIX EPOCH!"),
+    }
 }
 
 fn convert_to_value_object(list_data: Vec<QLValues>) -> Vec<ValueObject> {
@@ -40,7 +50,11 @@ fn convert_to_value_object(list_data: Vec<QLValues>) -> Vec<ValueObject> {
 impl Executor {
     // Generates a new executor
     pub fn new(db: Arc<RwLock<LokiKV>>, asts: Vec<Option<AST>>) -> Self {
-        Executor { database: db, asts }
+        Executor {
+            database: db,
+            asts,
+            persistor: Persistor::new(get_cur_timestamp_as_str()),
+        }
     }
 
     // Execute AST
@@ -55,7 +69,8 @@ impl Executor {
 
             // Since we already know that we are going to get a phantom value
             if let Some(left_node) = vc.get_left_child() {
-                let response_d = execute_rec(left_node, db, OpMode::Phantom, None);
+                let response_d =
+                    execute_rec(left_node, db, OpMode::Phantom, None, self.persistor.clone());
                 match response_d {
                     Some(res) => {
                         responses.push(res);
@@ -65,7 +80,13 @@ impl Executor {
             };
 
             if let Some(right_node) = vc.get_right_child() {
-                let response_d = execute_rec(right_node, db, OpMode::Phantom, None);
+                let response_d = execute_rec(
+                    right_node,
+                    db,
+                    OpMode::Phantom,
+                    None,
+                    self.persistor.clone(),
+                );
                 match response_d {
                     Some(res) => {
                         responses.push(res);
@@ -83,6 +104,7 @@ fn execute_rec(
     db: &Arc<RwLock<LokiKV>>,
     mode: OpMode,
     key: Option<String>,
+    persistor: Persistor,
 ) -> Option<ValueObject> {
     println!("{:?}", key);
     let val = node.get_value();
@@ -99,7 +121,7 @@ fn execute_rec(
                     println!("Set {:?} {:?}", key_node, value_node);
 
                     if let Some(node) = key_node {
-                        let v = execute_rec(node, db, OpMode::Phantom, None);
+                        let v = execute_rec(node, db, OpMode::Phantom, None, persistor.clone());
                         println!("{:?}", v);
                         match v {
                             Some(vc) => {
@@ -112,7 +134,7 @@ fn execute_rec(
                     };
 
                     if let Some(node) = value_node {
-                        execute_rec(node, db, OpMode::Write, Some(local_key));
+                        execute_rec(node, db, OpMode::Write, Some(local_key), persistor.clone());
                     };
                     Some(ValueObject::OutputString("SET".to_string()))
                 }
@@ -123,7 +145,7 @@ fn execute_rec(
                     println!("Set {:?} {:?}", key_node, value_node);
 
                     if let Some(node) = key_node {
-                        let v = execute_rec(node, db, OpMode::Phantom, None);
+                        let v = execute_rec(node, db, OpMode::Phantom, None, persistor.clone());
                         println!("{:?}", v);
                         match v {
                             Some(vc) => {
@@ -136,7 +158,13 @@ fn execute_rec(
                     };
 
                     if let Some(node) = value_node {
-                        execute_rec(node, db, OpMode::AppendHLL, Some(local_key));
+                        execute_rec(
+                            node,
+                            db,
+                            OpMode::AppendHLL,
+                            Some(local_key),
+                            persistor.clone(),
+                        );
                     };
                     Some(ValueObject::OutputString("SET".to_string()))
                 }
@@ -147,7 +175,7 @@ fn execute_rec(
                     println!("getting node -> {:?}", key_node);
 
                     if let Some(node) = key_node {
-                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
                             Some(vc) => {
                                 if let ValueObject::OutputString(data) = vc {
                                     local_key = data
@@ -177,7 +205,7 @@ fn execute_rec(
                     println!("getting node -> {:?}", key_node);
 
                     if let Some(node) = key_node {
-                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
                             Some(vc) => {
                                 if let ValueObject::OutputString(data) = vc {
                                     local_key = data
@@ -194,7 +222,7 @@ fn execute_rec(
                     let table_node = node.get_left_child();
 
                     if let Some(node) = table_node {
-                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
                             Some(vc) => {
                                 if let ValueObject::OutputString(data) = vc {
                                     local_key = data
@@ -213,7 +241,7 @@ fn execute_rec(
                     let table_node = node.get_left_child();
 
                     if let Some(node) = table_node {
-                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
                             Some(vc) => {
                                 if let ValueObject::OutputString(data) = vc {
                                     local_key = data
@@ -232,7 +260,7 @@ fn execute_rec(
                     let table_node = node.get_left_child();
 
                     if let Some(node) = table_node {
-                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
                             Some(vc) => {
                                 if let ValueObject::OutputString(data) = vc {
                                     local_key = data
@@ -247,10 +275,34 @@ fn execute_rec(
                         "CREATE CUSTOM H-MAP COLLECTION".to_string(),
                     ))
                 }
+                QLCommands::PERSIST => {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
+                        let mut ins = db.write().unwrap();
+                        ins.select_collection(local_key.as_str());
+                        persistor.persist(
+                            ins.get_current_collection().generate_pairs(),
+                            local_key.to_string(),
+                        );
+                    };
+                    Some(ValueObject::OutputString(format!(
+                        "PERSISTING {} TO DISK",
+                        local_key
+                    )))
+                }
                 QLCommands::SELCOL => {
                     let table_node = node.get_left_child();
                     if let Some(node) = table_node {
-                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
                             Some(vc) => {
                                 if let ValueObject::OutputString(data) = vc {
                                     local_key = data
@@ -267,7 +319,7 @@ fn execute_rec(
                     let key_node = node.get_left_child();
 
                     if let Some(node) = key_node {
-                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
                             Some(vc) => {
                                 if let ValueObject::OutputString(data) = vc {
                                     local_key = data
@@ -284,7 +336,7 @@ fn execute_rec(
                     let key_node = node.get_left_child();
 
                     if let Some(node) = key_node {
-                        let _ = match execute_rec(node, db, OpMode::Read, None) {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
                             Some(vc) => {
                                 if let ValueObject::OutputString(data) = vc {
                                     local_key = data
