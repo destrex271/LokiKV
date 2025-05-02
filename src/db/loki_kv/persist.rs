@@ -38,9 +38,11 @@ impl StoragePage {
 
         let mut json_content = String::new();
         json_content += "{\n";
+        let mut json_lines: Vec<String> = vec![];
         for entry in self.content.iter() {
-            json_content += format!("\"{}\": {:?},\n", entry.0, entry.1).as_str();
+            json_lines.push(format!("\"{}\": {:?}", entry.0, entry.1));
         }
+        json_content += json_lines.join(",\n").as_str();
         json_content += "}";
 
         match fs::write(path, format!("{}", json_content).as_bytes()) {
