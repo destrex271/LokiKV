@@ -43,6 +43,17 @@ cargo run  --bin client -- localhost 8765
 
 <hr/>
 
+# Architecture
+ - Overall Process
+![image](https://github.com/user-attachments/assets/5f6b200e-5f68-4cb4-85b3-260dc7a29db5)
+
+ - LokiKV structure
+![image](https://github.com/user-attachments/assets/3a0f64dd-756f-4fd7-bfa9-515dbcd17eb5)
+
+ - LokiQL Executor
+![image](https://github.com/user-attachments/assets/0b80811f-8807-4b25-8d38-05f809e09e6e)
+
+
 # Supported Operations
 
 LokiQL is a custom query language for interacting with the LokiKV database. This document describes the supported commands and their syntax.
@@ -81,7 +92,7 @@ LokiQL supports three types of commands:
 | Command | Syntax                                          |
 |---------|-------------------------------------------------|
 | `SET`   | `SET ID (STRING / INT / BOOL / FLOAT / BLOB)` |
-| `ADDHLL`(adds value to a HLL data type)   | `SET ID (STRING / INT / BOOL / FLOAT / BLOB)` |
+| `ADDHLL`(adds value to a HLL data type)   | `ADHLL ID (STRING / INT / BOOL / FLOAT / BLOB)` |
 
 #### **Examples**:
 ```plaintext
