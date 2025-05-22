@@ -67,8 +67,16 @@ fn main() {
         }
 
         // println!("Writing to stream: {}", buf);
-        if let Err(e) = writer.write_all(buf.as_bytes()) {
+        let json_command = format!(r#"{{"query": "{}"}}"#, buf.trim());
+
+        if let Err(e) = writer.write_all(json_command.as_bytes()) {
             eprintln!("Failed to send command: {}", e);
+            break;
+        }
+
+        // Ensure a newline is sent for proper deserialization
+        if let Err(e) = writer.write_all(b"\n") {
+            eprintln!("Failed to send newline: {}", e);
             break;
         }
         // println!("Written to stream!");
