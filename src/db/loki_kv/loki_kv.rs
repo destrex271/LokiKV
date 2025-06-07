@@ -355,15 +355,35 @@ impl LokiKV {
     }
 
     pub fn get_current_collection_mut(&mut self) -> &mut dyn CollectionProps {
-        if let Some(x) = self.collections_hmap.get_mut(&self.current_collection) {
+        self.get_collection_by_name_mut(&self.current_collection)
+    }
+
+    pub fn get_collection_by_name(&self, name: &str) -> &dyn CollectionProps {
+        if let Some(x) = self.collections_hmap.get(name) {
             return x;
         }
 
-        if let Some(x) = self.collections_bmap.get_mut(&self.current_collection) {
+        if let Some(x) = self.collections_bmap.get(name) {
             return x;
         }
 
-        if let Some(x) = self.collections_bmap_cust.get_mut(&self.current_collection) {
+        if let Some(x) = self.collections_bmap_cust.get(name) {
+            return x;
+        }
+
+        panic!("Collection does not exist!")
+    }
+
+    pub fn get_collection_by_name_mut(&self, name: &str) -> &mut dyn CollectionProps {
+        if let Some(x) = self.collections_hmap.get_mut(name) {
+            return x;
+        }
+
+        if let Some(x) = self.collections_bmap.get_mut(name) {
+            return x;
+        }
+
+        if let Some(x) = self.collections_bmap_cust.get(name) {
             return x;
         }
 
@@ -371,24 +391,16 @@ impl LokiKV {
     }
 
     pub fn get_current_collection(&self) -> &dyn CollectionProps {
-        if let Some(x) = self.collections_hmap.get(&self.current_collection) {
-            return x;
-        }
-
-        if let Some(x) = self.collections_bmap.get(&self.current_collection) {
-            return x;
-        }
-
-        if let Some(x) = self.collections_bmap_cust.get(&self.current_collection) {
-            return x;
-        }
-
-        panic!("Collection does not exist!")
+        return self.get_collection_by_name(&self.current_collection);
     }
 
     // Inserts Data
     pub fn put(&mut self, key: &str, value: ValueObject) -> bool {
         self.get_current_collection_mut().put(key, value)
+    }
+
+    pub fn put_in_collection(&mut self, collection_name: &str, key: &str, value: ValueObject){
+        self.get_collection_by_name_mut(collection_name).put(key, value);
     }
 
     // Gets data
