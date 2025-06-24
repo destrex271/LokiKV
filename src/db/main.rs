@@ -1,5 +1,6 @@
 mod loki_kv;
 mod parser;
+mod paxos;
 mod server_multithread;
 use tokio::net::TcpListener;
 
