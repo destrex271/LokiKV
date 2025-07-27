@@ -44,8 +44,15 @@ fn main() {
     ║ 🐞 GitHub Issues:                                  ║\n\
     ║ 👉 https://github.com/destrex271/LokiKV/issues     ║\n\
     ╠════════════════════════════════════════════════════╣\n\
-    ║ 🚀 Upcoming Features:                              ║\n\
+    ║ 🚀 New Features:                                   ║\n\
     ║    🔹 Persistence                                  ║\n\
+    ║      🔹 Use `PERSIST colname` to save to disk      ║\n\
+    ║      🔹 Use `LOAD_BCUST colname` to save to        ║\n\
+    ║         custom btree                               ║\n\
+    ║      🔹 Similarly use LOAD_BDEF and LOAD_HMAP      ║\n\
+    ╠════════════════════════════════════════════════════╣\n\
+    ║ 🚀 Upcoming Features:                              ║\n\
+    ║    🔹 WAL & Snapshots                              ║\n\
     ║    🔹 Distributed storage (in-memory & persistent) ║\n\
     ╠════════════════════════════════════════════════════╣\n\
     ║ ✨ Developed by: Akshat Jaimini (destrex271)       ║\n\
