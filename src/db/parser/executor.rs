@@ -27,7 +27,7 @@ pub struct Executor {
 
 fn get_cur_timestamp_as_str() -> String {
     match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
-        Ok(n) => format!(n),
+        Ok(n) => format!("{:?}", n),
         Err(_) => panic!("SystemTime before UNIX EPOCH!"),
     }
 }
