@@ -27,6 +27,10 @@ pub enum QLCommands {
     SHUTDOWN,
     COUNTHLL,
     PERSIST,
+    LOAD_BCUST,
+    LOAD_BDEF,
+    LOAD_HMAP,
+    DELCOL,
 }
 
 #[derive(Clone, Debug)]
@@ -201,6 +205,26 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                 }
                 "PERSIST" => {
                     node = QLValues::QLCommand(QLCommands::PERSIST);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "LOAD_BCUST" => {
+                    node = QLValues::QLCommand(QLCommands::LOAD_BCUST);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "LOAD_BDEF" => {
+                    node = QLValues::QLCommand(QLCommands::LOAD_BDEF);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "LOAD_HMAP" => {
+                    node = QLValues::QLCommand(QLCommands::LOAD_HMAP);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "DELCOL" => {
+                    node = QLValues::QLCommand(QLCommands::DELCOL);
                     ast_node.unwrap().add_child(node);
                     None
                 }
