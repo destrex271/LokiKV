@@ -27,7 +27,7 @@ pub struct Executor {
 
 fn get_cur_timestamp_as_str() -> String {
     match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
-        Ok(n) => format!("1970-01-01 00:00:00 UTC"),
+        Ok(n) => format!(n),
         Err(_) => panic!("SystemTime before UNIX EPOCH!"),
     }
 }
@@ -274,6 +274,96 @@ fn execute_rec(
                     Some(ValueObject::OutputString(
                         "CREATE CUSTOM H-MAP COLLECTION".to_string(),
                     ))
+                }
+                QLCommands::LOAD_HMAP => {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
+                    };
+
+                    let mut ins = db.write().unwrap();
+                    let vc = persistor.load_to_hmap(local_key.to_string());
+                    ins.append_hmap(vc.0, vc.1);
+
+                    Some(ValueObject::OutputString(format!(
+                        "LOADED HMAP {} FROM DISK",
+                        local_key
+                    )))
+                }
+                QLCommands::LOAD_BCUST => {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
+                    };
+
+                    let mut ins = db.write().unwrap();
+                    let vc = persistor.load_to_btree(local_key.to_string());
+                    ins.append_custom_bcol(vc.0, vc.1);
+
+                    Some(ValueObject::OutputString(format!(
+                        "LOADED BCUST {} FROM DISK",
+                        local_key
+                    )))
+                }
+                QLCommands::LOAD_BDEF => {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
+                    };
+
+                    let mut ins = db.write().unwrap();
+                    let vc = persistor.load_to_btree_def(local_key.to_string());
+                    ins.append_bcol(vc.0, vc.1);
+
+                    Some(ValueObject::OutputString(format!(
+                        "LOADED BDEF {} FROM DISK",
+                        local_key
+                    )))
+                }
+                QLCommands::DELCOL => {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => panic!("Unable to parse key"),
+                        };
+                        let mut ins = db.write().unwrap();
+                        ins.remove_collection(local_key.clone());
+                    };
+
+                    Some(ValueObject::OutputString(format!(
+                        "Removed Collection {}",
+                        local_key
+                    )))
                 }
                 QLCommands::PERSIST => {
                     let table_node = node.get_left_child();
