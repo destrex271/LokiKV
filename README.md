@@ -110,6 +110,10 @@ SET file <BLOB_BEGINS>aGVsbG8=<BLOB_ENDS>
 | `HLLCOUNT`(estimated cardinality)    | `HLLCOUNT <ID>` |
 | `INCR`   | `INCR <ID>` |
 | `DECR`   | `DECR <ID>` |
+| `PERSIST`   | `PERSIST <collection_name>` |
+| `LOAD_BCUST`   | `LOAD_BCUST <collection_name>` |
+| `LOAD_BDEF`   | `LOAD_BDEF <collection_name>` |
+| `LOAD_HMAP`   | `LOAD_HMAP <collection_name>` |
 | `/c_hcol`  | `/c_hcol <ID>` |
 | `/c_bcol`  | `/c_bcol <ID>` |
 | `/c_bcust` | `/c_bcust <ID>` |
