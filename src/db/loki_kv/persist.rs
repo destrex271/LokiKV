@@ -35,7 +35,7 @@ impl StoragePage {
 
         let mut file = match File::create(&path) {
             Ok(file) => file,
-            Err(_) => panic!("failed to create"),
+            Err(e) => panic!("failed to create {}", e),
         };
 
         let data = bincode::serialize(&self.content).unwrap();

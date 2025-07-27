@@ -1,10 +1,12 @@
 use core::{f32, panic};
 use std::any::{Any, TypeId};
 use std::collections::{self, BTreeMap, HashMap};
+use std::env::VarError;
 use std::fmt::Debug;
-use std::mem;
 use std::ptr::null;
+use std::{env, mem};
 
+use clap::builder::StringValueParser;
 use serde::{Deserialize, Serialize};
 
 use super::data_structures::btree::btree::BTree;
@@ -321,6 +323,13 @@ impl CollectionProps for Collection {
             data.push((key.to_string(), val.clone()));
         }
         return data;
+    }
+}
+
+pub fn get_data_directory() -> String {
+    match env::var("PERSIST_DIR") {
+        Ok(s) => s,
+        _ => "data".to_string(),
     }
 }
 

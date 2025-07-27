@@ -3,6 +3,7 @@ use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 use crate::loki_kv::data_structures::hyperloglog::HLL;
+use crate::loki_kv::loki_kv::get_data_directory;
 use crate::loki_kv::persist::Persistor;
 use crate::{
     loki_kv::loki_kv::{LokiKV, ValueObject},
@@ -23,13 +24,6 @@ pub struct Executor {
     database: Arc<RwLock<LokiKV>>,
     asts: Vec<Option<AST>>,
     persistor: Persistor,
-}
-
-fn get_cur_timestamp_as_str() -> String {
-    match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
-        Ok(n) => format!("{:?}", n),
-        Err(_) => panic!("SystemTime before UNIX EPOCH!"),
-    }
 }
 
 fn convert_to_value_object(list_data: Vec<QLValues>) -> Vec<ValueObject> {
@@ -53,7 +47,7 @@ impl Executor {
         Executor {
             database: db,
             asts,
-            persistor: Persistor::new(get_cur_timestamp_as_str()),
+            persistor: Persistor::new(get_data_directory()),
         }
     }
 
