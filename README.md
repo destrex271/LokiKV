@@ -15,6 +15,8 @@ To try out loki-kv you can follow these steps:
 ```bash
 git clone https://github.com/destrex271/LokiKV
 
+# setup persistnace directory; defaults to a new data directory in the folder where server is running
+export PERSIST_DATA=<fullpath>
 
 cargo run --bin server-db # in a separate terminal
 # runs on localhost:8765 by default
