@@ -53,7 +53,7 @@ impl Persistor {
     pub fn new(directory_name: String) -> Self {
         let _ = match create_dir_all(directory_name.clone()) {
             Ok(_) => println!("Created new directory"),
-            Err(..) => println!("got some error, lets ignore it for now..."),
+            Err(e) => println!("got some error, lets ignore it for now...{}", e),
         };
         println!("created directory");
         Persistor { directory_name }
