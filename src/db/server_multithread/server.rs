@@ -1,11 +1,15 @@
 use crate::loki_kv::loki_kv::{LokiKV, ValueObject};
 use crate::parser::executor::Executor;
 use crate::parser::parser::parse_lokiql;
+use std::env;
+use std::time::{Duration, Instant};
 use std::{
     ops::{Deref, DerefMut},
     sync::{Arc, RwLock},
 };
 use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::select;
+use tokio::time::{interval, sleep};
 use tokio::{
     io::{self, AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
@@ -89,20 +93,49 @@ impl LokiServer {
     }
 
     pub async fn start_event_loop(&mut self) {
-        loop {
-            // println!("HII!!");
-            match self.tcp_listener.accept().await {
-                Ok((socket, _)) => {
-                    let db = self.db_instance.clone();
+        let checkpoint_itr: u64 = match env::var("CHECKPOINT_INTERVAL"){
+            Ok(n) => n.parse().unwrap(),
+            _ => 120 as u64
+        };
 
-                    tokio::spawn(async move {
-                        if let Err(e) = handle_connection(socket, db).await {
-                            eprintln!("Error handling connection: {}", e);
+        let mut checkpoint_timer = interval(Duration::from_secs(checkpoint_itr));
+
+
+        loop {
+            select! {
+                accept_result = self.tcp_listener.accept() => {
+                    match accept_result {
+                        Ok((socket, _)) => {
+                            let db = self.db_instance.clone();
+                            tokio::spawn(async move {
+                                if let Err(e) = handle_connection(socket, db).await {
+                                    eprintln!("Error handling connection: {}", e);
+                                }
+                            });
                         }
+                        Err(e) => {
+                            eprintln!("Error accepting connection: {}", e);
+                        }
+                    }
+                }
+
+                _ = checkpoint_timer.tick() => {
+                    println!("Checkpointing...");
+                    let ins = self.db_instance.clone();
+                    tokio::spawn(async move {
+                        let db = ins.read().unwrap();
+                        db.checkpoint();
                     });
                 }
-                _ => panic!("error accepting connection"),
-            };
+            }
+        }
+    }
+
+    pub async fn start_checkpointing(&self) {
+        loop{
+            let ins = self.db_instance.read().unwrap();
+            ins.checkpoint();
+            sleep(Duration::from_secs(10)).await;
         }
     }
 }
