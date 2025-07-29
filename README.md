@@ -17,6 +17,8 @@ git clone https://github.com/destrex271/LokiKV
 
 # setup persistnace directory; defaults to a new data directory in the folder where server is running
 export PERSIST_DATA=<fullpath>
+export CHECKPOINT_DIR=<fullpath>
+export CHECKPOINT_INTERVAL=<time in seconds>
 
 cargo run --bin server-db # in a separate terminal
 # runs on localhost:8765 by default
@@ -171,4 +173,4 @@ Single commands don't need to follow a `;`
 # TODO
 
  - Add support for distributed setup via Paxos Algorithm
- - Need to add persistence feature
+ - Add WAL support
