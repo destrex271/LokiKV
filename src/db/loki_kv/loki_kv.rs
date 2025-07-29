@@ -4,6 +4,7 @@ use std::collections::{self, BTreeMap, HashMap};
 use std::env::VarError;
 use std::fmt::Debug;
 use std::ptr::null;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{env, mem};
 
 use clap::builder::StringValueParser;
@@ -11,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use super::data_structures::btree::btree::BTree;
 use super::data_structures::hyperloglog::HLL;
+use super::persist::Persistor;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ValueObject {
@@ -333,6 +335,21 @@ pub fn get_data_directory() -> String {
     }
 }
 
+pub fn get_checkpoint_directory() -> String{
+    match env::var("CHECKPOINT_DIR") {
+        Ok(s) => s,
+        _ => "checkpoints".to_string()
+    }
+}
+
+pub fn get_current_timestamp() -> String{
+    let now = SystemTime::now();
+    let duration_since_epoch = now.duration_since(UNIX_EPOCH).unwrap();
+    let timestamp = duration_since_epoch.as_secs(); // u64
+    let timestamp_str = timestamp.to_string();
+    return timestamp_str;
+}
+
 pub struct LokiKV {
     collections_hmap: HashMap<String, Collection>,
     collections_bmap: HashMap<String, CollectionBTree>,
@@ -473,5 +490,38 @@ impl LokiKV {
             res += "\n";
         }
         res
+    }
+
+    pub fn checkpoint(&self) {
+        for col in self.collections_bmap_cust.iter(){
+            let pth = format!("{}/{}", get_checkpoint_directory(), get_current_timestamp()); 
+            let pairs = col.1.clone().generate_pairs();
+            if pairs.len() == 0{
+                continue;
+            }
+            let persistor = Persistor::new(pth);
+            persistor.persist(pairs, col.0.clone());
+        }
+
+        for col in self.collections_bmap.iter(){
+            let pth = format!("{}/{}", get_checkpoint_directory(), get_current_timestamp()); 
+            let pairs = col.1.clone().generate_pairs();
+            if pairs.len() == 0{
+                continue;
+            }
+            let persistor = Persistor::new(pth);
+            persistor.persist(pairs, col.0.clone());
+        }
+
+
+        for col in self.collections_hmap.iter(){
+            let pth = format!("{}/{}", get_checkpoint_directory(), get_current_timestamp()); 
+            let pairs = col.1.clone().generate_pairs();
+            if pairs.len() == 0{
+                continue;
+            }
+            let persistor = Persistor::new(pth);
+            persistor.persist(pairs,col.0.clone());
+        }
     }
 }

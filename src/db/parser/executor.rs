@@ -359,7 +359,7 @@ fn execute_rec(
                         local_key
                     )))
                 }
-                QLCommands::PERSIST => {
+                QLCommands::PERSIST  => {
                     let table_node = node.get_left_child();
 
                     if let Some(node) = table_node {
