@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use super::data_structures::btree::btree::BTree;
 use super::data_structures::hyperloglog::HLL;
 use super::persist::Persistor;
+use paris::Logger;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ValueObject {
@@ -58,7 +59,6 @@ impl CollectionProps for CollectionBTree {
         let stat = self.store.insert(key.to_string(), value);
         match stat {
             Some(stat) => {
-                println!("{:?}", stat);
                 true
             }
             None => false,
@@ -250,7 +250,6 @@ impl CollectionProps for Collection {
         let stat = self.store.insert(key.to_string(), value);
         match stat {
             Some(stat) => {
-                println!("{:?}", stat);
                 true
             }
             None => false,

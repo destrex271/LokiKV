@@ -1,6 +1,7 @@
 use crate::loki_kv::loki_kv::{LokiKV, ValueObject};
 use crate::parser::executor::Executor;
 use crate::parser::parser::parse_lokiql;
+use crate::utils::{error_string, info, info_string, warning};
 use std::env;
 use std::time::{Duration, Instant};
 use std::{
@@ -28,7 +29,7 @@ async fn handle_connection(
     stream: TcpStream,
     db_instance: Arc<RwLock<LokiKV>>,
 ) -> Result<(), String> {
-    println!("Starting handle....");
+    info("Starting handle....");
     let (rd, mut wr) = stream.into_split();
     let mut reader = BufReader::new(rd);
     let mut buf = String::new();
@@ -37,7 +38,7 @@ async fn handle_connection(
         buf.clear();
         let n = reader.read_line(&mut buf).await.unwrap();
         if n == 0 {
-            println!("Connection closed!");
+            warning("Connection closed!");
             return Err(String::from("connection closed"));
         }
 
@@ -46,7 +47,6 @@ async fn handle_connection(
         //     .map_err(|e| format!("Invalid UTF-8 data: {}", e))
         //     .unwrap();
 
-        println!("Got {:?}", request_line);
 
         let asts = parse_lokiql(&request_line);
         let mut ast_exector = Executor::new(db_instance.clone(), asts);
@@ -61,22 +61,20 @@ async fn handle_connection(
         }
 
         resp_str += "<END_OF_RESPONSE>\n";
-        println!("RESPONSE: {}", resp_str);
         let _ = wr.write_all(resp_str.as_bytes()).await;
         let _ = wr.flush().await;
-        // println!("Wrote bytes {}", resp_str);
     }
 }
 
 impl LokiServer {
     pub async fn new(host: String, port: u16, thread_count: usize) -> Self {
         let addr = format!("{}:{}", host, port);
-        println!("Trying to start server at -> {}", addr);
+        info_string(format!("Trying to start server at -> {}", addr));
         let tcp_listener = TcpListener::bind(addr).await;
 
         match tcp_listener {
             Ok(tcp_list) => {
-                println!("Started Sevrer at {}:{}", host, port);
+                info_string(format!("Started Sevrer at {}:{}", host, port));
                 let db_instance = LokiKV::new();
                 LokiServer {
                     tcp_listener: tcp_list,
@@ -109,18 +107,18 @@ impl LokiServer {
                             let db = self.db_instance.clone();
                             tokio::spawn(async move {
                                 if let Err(e) = handle_connection(socket, db).await {
-                                    eprintln!("Error handling connection: {}", e);
+                                    error_string(format!("Error handling connection: {}", e));
                                 }
                             });
                         }
                         Err(e) => {
-                            eprintln!("Error accepting connection: {}", e);
+                            error_string(format!("Error accepting connection: {}", e));
                         }
                     }
                 }
 
                 _ = checkpoint_timer.tick() => {
-                    println!("Checkpointing...");
+                    info("Checkpointing...");
                     let ins = self.db_instance.clone();
                     tokio::spawn(async move {
                         let db = ins.read().unwrap();

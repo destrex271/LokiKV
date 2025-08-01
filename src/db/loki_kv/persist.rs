@@ -4,6 +4,7 @@ use tokio::sync::RwLock;
 use crate::loki_kv::loki_kv::{
     Collection, CollectionBTree, CollectionBTreeCustom, CollectionProps, LokiKV, ValueObject,
 };
+use crate::utils::{error, info, info_string};
 use std::fs;
 use std::fs::{create_dir_all, File};
 use std::io::Write;
@@ -31,7 +32,7 @@ impl StoragePage {
     fn flush_to_disk(&self) {
         let path_disp = format!("{}/{}_{}.lqlpage", self.pwd, "chunk", self.chunk_start_idx);
         let path = Path::new(&path_disp);
-        println!("Persisting to page at {}", path.display());
+        info_string(format!("Persisting to page at {}", path.display()));
 
         let mut file = match File::create(&path) {
             Ok(file) => file,
@@ -52,10 +53,9 @@ pub struct Persistor {
 impl Persistor {
     pub fn new(directory_name: String) -> Self {
         let _ = match create_dir_all(directory_name.clone()) {
-            Ok(_) => println!("Created new directory"),
+            Ok(_) => info("Created new directory"),
             Err(e) => println!("got some error, lets ignore it for now...{}", e),
         };
-        println!("created directory");
         Persistor { directory_name }
     }
 
@@ -72,7 +72,6 @@ impl Persistor {
             let dc: Vec<(String, ValueObject)> =
                 bincode::deserialize(&bytes).expect("Failed to deserialize bincode");
 
-            println!("->> {:?}", dc);
             col.bulk_put(dc);
         }
 
@@ -92,7 +91,6 @@ impl Persistor {
             let dc: Vec<(String, ValueObject)> =
                 bincode::deserialize(&bytes).expect("Failed to deserialize bincode");
 
-            println!("->> {:?}", dc);
             col.bulk_put(dc);
         }
 
@@ -112,7 +110,6 @@ impl Persistor {
             let dc: Vec<(String, ValueObject)> =
                 bincode::deserialize(&bytes).expect("Failed to deserialize bincode");
 
-            println!("->> {:?}", dc);
             col.bulk_put(dc);
         }
 
@@ -123,15 +120,15 @@ impl Persistor {
         let mut cnt = 0;
         let fin_path = self.directory_name.clone() + "/" + collection_name.as_str();
         let _ = match create_dir_all(fin_path.clone()) {
-            Ok(_) => println!("Created new directory"),
-            Err(..) => println!("got some error, lets ignore it for now..."),
+            Ok(_) => info("Created new directory"),
+            Err(..) => error("got some error, lets ignore it for now..."),
         };
         for idx in (0..content.len()).step_by(HARD_END_LIMIT) {
             let mut end_idx = idx + HARD_END_LIMIT;
             if end_idx >= content.len() {
                 end_idx = content.len();
             }
-            println!("WRITING {}...", fin_path);
+            info_string(format!("WRITING {}...", fin_path));
             let cur_page = StoragePage::new(content[idx..end_idx].to_vec(), cnt, fin_path.clone());
             cur_page.flush_to_disk();
             cnt += 1;

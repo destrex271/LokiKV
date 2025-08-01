@@ -5,6 +5,7 @@ use std::{
 };
 
 use clap::Parser;
+use paris::Logger;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about=None)]
@@ -16,11 +17,14 @@ struct Args {
 }
 
 fn main() {
+    let mut logger = Logger::new();
     let args = Args::parse();
-    println!("Connecting to {}:{}.....", args.host, args.port);
+    let s = format!("Connecting to {}:{}.....", args.host, args.port);
+    logger.loading(s.as_str());
     let mut stream = match TcpStream::connect(format!("{}:{}", args.host, args.port)) {
         Ok(strm) => {
-            println!("Connected to LokiKV instance!");
+            logger.done();
+            logger.success("Connected to LokiKV instance!");
             strm
         }
         Err(err) => panic!("Unable to connect! Error: {}", err),
@@ -65,7 +69,7 @@ fn main() {
 
         let mut buf = String::new();
         if io::stdin().read_line(&mut buf).is_err() {
-            eprintln!("Couldn't read command");
+            logger.error("Couldn't read command");
             continue;
         }
 
@@ -75,7 +79,8 @@ fn main() {
 
         // println!("Writing to stream: {}", buf);
         if let Err(e) = writer.write_all(buf.as_bytes()) {
-            eprintln!("Failed to send command: {}", e);
+            let e = format!("Failed to send command: {}", e);
+            logger.error(e.as_str());
             break;
         }
         // println!("Written to stream!");
@@ -86,7 +91,7 @@ fn main() {
             let mut line = String::new();
             if let Ok(bytes) = reader.read_line(&mut line) {
                 if bytes == 0 {
-                    println!("Seems like there was an error! Please try again..");
+                    logger.error("Seems like there was an error! Please try again..");
                     return;
                 }
 
@@ -97,11 +102,12 @@ fn main() {
                 response.push_str(line.trim());
                 response += "\n";
             } else {
-                eprintln!("Failed to read response.");
+                logger.error("Failed to read response.");
                 break;
             }
         }
 
-        println!("{}", response);
+        let t = format!("{}", response);
+        logger.info(t.as_str());
     }
 }
