@@ -10,6 +10,8 @@ use std::{env, mem};
 use clap::builder::StringValueParser;
 use serde::{Deserialize, Serialize};
 
+use crate::utils::error_string;
+
 use super::data_structures::btree::btree::BTree;
 use super::data_structures::hyperloglog::HLL;
 use super::persist::Persistor;
@@ -420,7 +422,7 @@ impl LokiKV {
     }
 
     pub fn get_current_collection_mut(&mut self) -> &mut dyn CollectionProps {
-        self.get_collection_by_name_mut(&self.current_collection)
+        self.get_collection_by_name_mut(&self.current_collection.clone())
     }
 
     pub fn get_collection_by_name(&self, name: &str) -> &dyn CollectionProps {
@@ -439,7 +441,7 @@ impl LokiKV {
         panic!("Collection does not exist!")
     }
 
-    pub fn get_collection_by_name_mut(&self, name: &str) -> &mut dyn CollectionProps {
+    pub fn get_collection_by_name_mut(&mut self, name: &str) -> &mut dyn CollectionProps {
         if let Some(x) = self.collections_hmap.get_mut(name) {
             return x;
         }
@@ -448,15 +450,16 @@ impl LokiKV {
             return x;
         }
 
-        if let Some(x) = self.collections_bmap_cust.get(name) {
+        if let Some(x) = self.collections_bmap_cust.get_mut(name) {
             return x;
         }
 
-        panic!("Collection does not exist!")
+        error_string("Collection does not exist!".to_string());
+        panic!()
     }
 
     pub fn get_current_collection(&self) -> &dyn CollectionProps {
-        return self.get_collection_by_name(&self.current_collection);
+        return self.get_collection_by_name(self.current_collection.clone().as_str());
     }
 
     // Inserts Data
