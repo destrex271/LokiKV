@@ -1,14 +1,21 @@
 use core::{f32, panic};
 use std::any::{Any, TypeId};
 use std::collections::{self, BTreeMap, HashMap};
+use std::env::VarError;
 use std::fmt::Debug;
-use std::mem;
 use std::ptr::null;
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::{env, mem};
+
+use clap::builder::StringValueParser;
+use serde::{Deserialize, Serialize};
 
 use super::data_structures::btree::btree::BTree;
 use super::data_structures::hyperloglog::HLL;
+use super::persist::Persistor;
+use paris::Logger;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ValueObject {
     StringData(String),
     IntData(isize),
@@ -18,6 +25,7 @@ pub enum ValueObject {
     OutputString(String),
     BlobData(Vec<u8>),
     ListData(Vec<ValueObject>),
+    #[serde(skip_serializing, skip_deserializing)]
     HLLPointer(HLL),
 }
 
@@ -32,6 +40,7 @@ pub trait CollectionProps {
     fn decr(&mut self, key: &str) -> Result<(), &str>;
     fn display_collection(&self) -> String;
     fn generate_pairs(&self) -> Vec<(String, ValueObject)>;
+    fn bulk_put(&mut self, pairs: Vec<(String, ValueObject)>);
 }
 
 // Table structure with btree as internal store
@@ -50,10 +59,15 @@ impl CollectionProps for CollectionBTree {
         let stat = self.store.insert(key.to_string(), value);
         match stat {
             Some(stat) => {
-                println!("{:?}", stat);
                 true
             }
             None => false,
+        }
+    }
+
+    fn bulk_put(&mut self, pairs: Vec<(String, ValueObject)>) {
+        for a in pairs {
+            self.put(a.0.as_str(), a.1);
         }
     }
 
@@ -150,6 +164,12 @@ impl CollectionProps for CollectionBTreeCustom {
         // }
     }
 
+    fn bulk_put(&mut self, pairs: Vec<(String, ValueObject)>) {
+        for a in pairs {
+            self.put(a.0.as_str(), a.1);
+        }
+    }
+
     fn key_exists(&self, key: &str) -> bool {
         match self.store.search(key.to_string()) {
             None => false,
@@ -230,10 +250,15 @@ impl CollectionProps for Collection {
         let stat = self.store.insert(key.to_string(), value);
         match stat {
             Some(stat) => {
-                println!("{:?}", stat);
                 true
             }
             None => false,
+        }
+    }
+
+    fn bulk_put(&mut self, pairs: Vec<(String, ValueObject)>) {
+        for a in pairs {
+            self.put(a.0.as_str(), a.1);
         }
     }
 
@@ -302,6 +327,28 @@ impl CollectionProps for Collection {
     }
 }
 
+pub fn get_data_directory() -> String {
+    match env::var("PERSIST_DIR") {
+        Ok(s) => s,
+        _ => "data".to_string(),
+    }
+}
+
+pub fn get_checkpoint_directory() -> String{
+    match env::var("CHECKPOINT_DIR") {
+        Ok(s) => s,
+        _ => "checkpoints".to_string()
+    }
+}
+
+pub fn get_current_timestamp() -> String{
+    let now = SystemTime::now();
+    let duration_since_epoch = now.duration_since(UNIX_EPOCH).unwrap();
+    let timestamp = duration_since_epoch.as_secs(); // u64
+    let timestamp_str = timestamp.to_string();
+    return timestamp_str;
+}
+
 pub struct LokiKV {
     collections_hmap: HashMap<String, Collection>,
     collections_bmap: HashMap<String, CollectionBTree>,
@@ -336,6 +383,24 @@ impl LokiKV {
     pub fn create_custom_bcol(&mut self, collection_name: String) {
         self.collections_bmap_cust
             .insert(collection_name, CollectionBTreeCustom::new());
+    }
+
+    pub fn append_custom_bcol(&mut self, collection_name: String, col: CollectionBTreeCustom) {
+        self.collections_bmap_cust.insert(collection_name, col);
+    }
+
+    pub fn append_bcol(&mut self, collection_name: String, col: CollectionBTree) {
+        self.collections_bmap.insert(collection_name, col);
+    }
+
+    pub fn append_hmap(&mut self, collection_name: String, col: Collection) {
+        self.collections_hmap.insert(collection_name, col);
+    }
+
+    pub fn remove_collection(&mut self, collection_name: String) {
+        self.collections_bmap.remove(collection_name.as_str());
+        self.collections_bmap_cust.remove(collection_name.as_str());
+        self.collections_hmap.remove(collection_name.as_str());
     }
 
     pub fn select_collection(&mut self, key: &str) {
@@ -436,5 +501,38 @@ impl LokiKV {
             res += "\n";
         }
         res
+    }
+
+    pub fn checkpoint(&self) {
+        for col in self.collections_bmap_cust.iter(){
+            let pth = format!("{}/{}", get_checkpoint_directory(), get_current_timestamp()); 
+            let pairs = col.1.clone().generate_pairs();
+            if pairs.len() == 0{
+                continue;
+            }
+            let persistor = Persistor::new(pth);
+            persistor.persist(pairs, col.0.clone());
+        }
+
+        for col in self.collections_bmap.iter(){
+            let pth = format!("{}/{}", get_checkpoint_directory(), get_current_timestamp()); 
+            let pairs = col.1.clone().generate_pairs();
+            if pairs.len() == 0{
+                continue;
+            }
+            let persistor = Persistor::new(pth);
+            persistor.persist(pairs, col.0.clone());
+        }
+
+
+        for col in self.collections_hmap.iter(){
+            let pth = format!("{}/{}", get_checkpoint_directory(), get_current_timestamp()); 
+            let pairs = col.1.clone().generate_pairs();
+            if pairs.len() == 0{
+                continue;
+            }
+            let persistor = Persistor::new(pth);
+            persistor.persist(pairs,col.0.clone());
+        }
     }
 }

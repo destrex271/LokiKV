@@ -15,6 +15,10 @@ To try out loki-kv you can follow these steps:
 ```bash
 git clone https://github.com/destrex271/LokiKV
 
+# setup persistnace directory; defaults to a new data directory in the folder where server is running
+export PERSIST_DATA=<fullpath>
+export CHECKPOINT_DIR=<fullpath>
+export CHECKPOINT_INTERVAL=<time in seconds>
 
 cargo run --bin server-db # in a separate terminal
 # runs on localhost:8765 by default
@@ -42,6 +46,17 @@ cargo run  --bin client -- localhost 8765
  - List all available collections
 
 <hr/>
+
+# Architecture
+ - Overall Process
+![image](https://github.com/user-attachments/assets/5f6b200e-5f68-4cb4-85b3-260dc7a29db5)
+
+ - LokiKV structure
+![image](https://github.com/user-attachments/assets/3a0f64dd-756f-4fd7-bfa9-515dbcd17eb5)
+
+ - LokiQL Executor
+![image](https://github.com/user-attachments/assets/0b80811f-8807-4b25-8d38-05f809e09e6e)
+
 
 # Supported Operations
 
@@ -81,7 +96,7 @@ LokiQL supports three types of commands:
 | Command | Syntax                                          |
 |---------|-------------------------------------------------|
 | `SET`   | `SET ID (STRING / INT / BOOL / FLOAT / BLOB)` |
-| `ADDHLL`(adds value to a HLL data type)   | `SET ID (STRING / INT / BOOL / FLOAT / BLOB)` |
+| `ADDHLL`(adds value to a HLL data type)   | `ADHLL ID (STRING / INT / BOOL / FLOAT / BLOB)` |
 
 #### **Examples**:
 ```plaintext
@@ -99,6 +114,10 @@ SET file <BLOB_BEGINS>aGVsbG8=<BLOB_ENDS>
 | `HLLCOUNT`(estimated cardinality)    | `HLLCOUNT <ID>` |
 | `INCR`   | `INCR <ID>` |
 | `DECR`   | `DECR <ID>` |
+| `PERSIST`   | `PERSIST <collection_name>` |
+| `LOAD_BCUST`   | `LOAD_BCUST <collection_name>` |
+| `LOAD_BDEF`   | `LOAD_BDEF <collection_name>` |
+| `LOAD_HMAP`   | `LOAD_HMAP <collection_name>` |
 | `/c_hcol`  | `/c_hcol <ID>` |
 | `/c_bcol`  | `/c_bcol <ID>` |
 | `/c_bcust` | `/c_bcust <ID>` |
@@ -154,4 +173,4 @@ Single commands don't need to follow a `;`
 # TODO
 
  - Add support for distributed setup via Paxos Algorithm
- - Need to add persistence feature
+ - Add WAL support

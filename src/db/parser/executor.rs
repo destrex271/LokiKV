@@ -3,10 +3,21 @@ use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 use crate::loki_kv::data_structures::hyperloglog::HLL;
+use crate::loki_kv::loki_kv::get_data_directory;
 use crate::loki_kv::persist::Persistor;
 use crate::{
     loki_kv::loki_kv::{LokiKV, ValueObject},
     parser::parser::QLCommands,
+};
+use crate::utils::{
+    info,
+    error,
+    info_string,
+    error_string,
+    warning_string,
+    success_string,
+    warning,
+    success,
 };
 
 use super::parser::{QLValues, AST};
@@ -25,13 +36,6 @@ pub struct Executor {
     persistor: Persistor,
 }
 
-fn get_cur_timestamp_as_str() -> String {
-    match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
-        Ok(n) => format!("1970-01-01 00:00:00 UTC"),
-        Err(_) => panic!("SystemTime before UNIX EPOCH!"),
-    }
-}
-
 fn convert_to_value_object(list_data: Vec<QLValues>) -> Vec<ValueObject> {
     let mut data: Vec<ValueObject> = vec![];
     for item in list_data {
@@ -41,7 +45,7 @@ fn convert_to_value_object(list_data: Vec<QLValues>) -> Vec<ValueObject> {
             QLValues::QLFloat(a) => data.push(ValueObject::DecimalData(a)),
             QLValues::QLString(a) => data.push(ValueObject::StringData(a)),
             QLValues::QLBlob(a) => data.push(ValueObject::BlobData(a)),
-            _ => println!("no conversions available"),
+            _ => error("no conversions available"),
         }
     }
     data
@@ -53,7 +57,7 @@ impl Executor {
         Executor {
             database: db,
             asts,
-            persistor: Persistor::new(get_cur_timestamp_as_str()),
+            persistor: Persistor::new(get_data_directory()),
         }
     }
 
@@ -106,7 +110,6 @@ fn execute_rec(
     key: Option<String>,
     persistor: Persistor,
 ) -> Option<ValueObject> {
-    println!("{:?}", key);
     let val = node.get_value();
     let mut local_key = String::new();
 
@@ -118,18 +121,17 @@ fn execute_rec(
                     let key_node = node.get_left_child();
                     let value_node = node.get_right_child();
 
-                    println!("Set {:?} {:?}", key_node, value_node);
+                    info_string(format!("Set {:?} {:?}", key_node, value_node));
 
                     if let Some(node) = key_node {
                         let v = execute_rec(node, db, OpMode::Phantom, None, persistor.clone());
-                        println!("{:?}", v);
                         match v {
                             Some(vc) => {
                                 if let ValueObject::OutputString(val) = vc {
                                     local_key = val;
                                 }
                             }
-                            None => panic!("No Key!"),
+                            None => error("No Key!"),
                         }
                     };
 
@@ -142,18 +144,17 @@ fn execute_rec(
                     let key_node = node.get_left_child();
                     let value_node = node.get_right_child();
 
-                    println!("Set {:?} {:?}", key_node, value_node);
+                    info_string(format!("Set {:?} {:?}", key_node, value_node));
 
                     if let Some(node) = key_node {
                         let v = execute_rec(node, db, OpMode::Phantom, None, persistor.clone());
-                        println!("{:?}", v);
                         match v {
                             Some(vc) => {
                                 if let ValueObject::OutputString(val) = vc {
                                     local_key = val;
                                 }
                             }
-                            None => panic!("No Key!"),
+                            None => error("No Key!"),
                         }
                     };
 
@@ -172,7 +173,6 @@ fn execute_rec(
                     let key_node = node.get_left_child();
 
                     let mut val: ValueObject = ValueObject::Phantom;
-                    println!("getting node -> {:?}", key_node);
 
                     if let Some(node) = key_node {
                         let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
@@ -181,7 +181,7 @@ fn execute_rec(
                                     local_key = data
                                 }
                             }
-                            None => panic!("Unable to parse key"),
+                            None => error("Unable to parse key"),
                         };
                         let ins = db.read().unwrap();
                         if let Some(vd) = ins.get(&local_key) {
@@ -202,7 +202,6 @@ fn execute_rec(
                 QLCommands::GET => {
                     let key_node = node.get_left_child();
                     let mut val: ValueObject = ValueObject::Phantom;
-                    println!("getting node -> {:?}", key_node);
 
                     if let Some(node) = key_node {
                         let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
@@ -211,7 +210,7 @@ fn execute_rec(
                                     local_key = data
                                 }
                             }
-                            None => panic!("Unable to parse key"),
+                            None => error("Unable to parse key"),
                         };
                         let ins = db.read().unwrap();
                         val = ins.get(&local_key).unwrap().clone();
@@ -228,7 +227,7 @@ fn execute_rec(
                                     local_key = data
                                 }
                             }
-                            None => panic!("Unable to parse key"),
+                            None => error("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
                         ins.create_bmap_collection(local_key);
@@ -247,7 +246,7 @@ fn execute_rec(
                                     local_key = data
                                 }
                             }
-                            None => panic!("Unable to parse key"),
+                            None => error("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
                         ins.create_custom_bcol(local_key);
@@ -266,7 +265,7 @@ fn execute_rec(
                                     local_key = data
                                 }
                             }
-                            None => panic!("Unable to parse key"),
+                            None => error("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
                         ins.create_hmap_collection(local_key);
@@ -275,7 +274,7 @@ fn execute_rec(
                         "CREATE CUSTOM H-MAP COLLECTION".to_string(),
                     ))
                 }
-                QLCommands::PERSIST => {
+                QLCommands::LOAD_HMAP => {
                     let table_node = node.get_left_child();
 
                     if let Some(node) = table_node {
@@ -285,7 +284,97 @@ fn execute_rec(
                                     local_key = data
                                 }
                             }
-                            None => panic!("Unable to parse key"),
+                            None => error("Unable to parse key"),
+                        };
+                    };
+
+                    let mut ins = db.write().unwrap();
+                    let vc = persistor.load_to_hmap(local_key.to_string());
+                    ins.append_hmap(vc.0, vc.1);
+
+                    Some(ValueObject::OutputString(format!(
+                        "LOADED HMAP {} FROM DISK",
+                        local_key
+                    )))
+                }
+                QLCommands::LOAD_BCUST => {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => error("Unable to parse key"),
+                        };
+                    };
+
+                    let mut ins = db.write().unwrap();
+                    let vc = persistor.load_to_btree(local_key.to_string());
+                    ins.append_custom_bcol(vc.0, vc.1);
+
+                    Some(ValueObject::OutputString(format!(
+                        "LOADED BCUST {} FROM DISK",
+                        local_key
+                    )))
+                }
+                QLCommands::LOAD_BDEF => {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => error("Unable to parse key"),
+                        };
+                    };
+
+                    let mut ins = db.write().unwrap();
+                    let vc = persistor.load_to_btree_def(local_key.to_string());
+                    ins.append_bcol(vc.0, vc.1);
+
+                    Some(ValueObject::OutputString(format!(
+                        "LOADED BDEF {} FROM DISK",
+                        local_key
+                    )))
+                }
+                QLCommands::DELCOL => {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => error("Unable to parse key"),
+                        };
+                        let mut ins = db.write().unwrap();
+                        ins.remove_collection(local_key.clone());
+                    };
+
+                    Some(ValueObject::OutputString(format!(
+                        "Removed Collection {}",
+                        local_key
+                    )))
+                }
+                QLCommands::PERSIST  => {
+                    let table_node = node.get_left_child();
+
+                    if let Some(node) = table_node {
+                        let _ = match execute_rec(node, db, OpMode::Read, None, persistor.clone()) {
+                            Some(vc) => {
+                                if let ValueObject::OutputString(data) = vc {
+                                    local_key = data
+                                }
+                            }
+                            None => error("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
                         ins.select_collection(local_key.as_str());
@@ -308,7 +397,7 @@ fn execute_rec(
                                     local_key = data
                                 }
                             }
-                            None => panic!("Unable to parse key"),
+                            None => error("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
                         ins.select_collection(&local_key);
@@ -325,7 +414,7 @@ fn execute_rec(
                                     local_key = data
                                 }
                             }
-                            None => panic!("Unable to parse key"),
+                            None => error("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
                         ins.incr(&local_key);
@@ -342,7 +431,7 @@ fn execute_rec(
                                     local_key = data
                                 }
                             }
-                            None => panic!("Unable to parse key"),
+                            None => error("Unable to parse key"),
                         };
                         let mut ins = db.write().unwrap();
                         ins.decr(&local_key);
@@ -375,7 +464,6 @@ fn execute_rec(
                 let mut ins = db.write().unwrap();
                 match key {
                     Some(kv) => {
-                        println!("setting {} to {:?}", kv, list_value);
                         ins.put(
                             &kv,
                             ValueObject::ListData(convert_to_value_object(list_value)),
@@ -406,12 +494,10 @@ fn execute_rec(
             // }
             OpMode::Append => {
                 let mut ins = db.write().unwrap();
-                println!("Appending to hll...");
                 match key {
                     Some(kv) => {
                         if let Some(cur_list) = ins.get(&local_key) {
                             if let ValueObject::ListData(new_vec) = cur_list.clone() {
-                                println!("new data -> {:?}", new_vec);
                             }
                         }
                         None
@@ -426,7 +512,6 @@ fn execute_rec(
                 let mut ins = db.write().unwrap();
                 match key {
                     Some(kv) => {
-                        println!("setting {} to  {}", kv, bool_val);
                         ins.put(&kv, ValueObject::BoolData(bool_val));
                     }
                     None => {}
@@ -438,7 +523,6 @@ fn execute_rec(
                 match key {
                     Some(kv) => {
                         // get value at key
-                        println!("HLL here -> {}", kv);
                         if let Some(vb) = ins.get(&kv) {
                             match vb {
                                 ValueObject::HLLPointer(hll_obj) => {
@@ -466,7 +550,6 @@ fn execute_rec(
                 let mut ins = db.write().unwrap();
                 match key {
                     Some(kv) => {
-                        println!("setting {} to  {}", kv, int_v);
                         ins.put(&kv, ValueObject::IntData(int_v));
                     }
                     _ => {}
@@ -478,7 +561,6 @@ fn execute_rec(
                 match key {
                     Some(kv) => {
                         // get value at key
-                        println!("HLL here -> {}", kv);
                         if let Some(vb) = ins.get(&kv) {
                             match vb {
                                 ValueObject::HLLPointer(hll_obj) => {
@@ -506,7 +588,6 @@ fn execute_rec(
                 let mut ins = db.write().unwrap();
                 match key {
                     Some(kv) => {
-                        println!("setting {} to  {}", kv, fl_v);
                         ins.put(&kv, ValueObject::DecimalData(fl_v));
                     }
                     _ => {}
@@ -518,7 +599,6 @@ fn execute_rec(
             //     match key{
             //         Some(kv) => {
             //             // get value at key
-            //             println!("HLL here -> {}", kv);
             //             if let Some(vb) = ins.get(&kv){
             //                 match vb{
             //                     ValueObject::HLLPointer(hll_obj) => {
@@ -547,7 +627,6 @@ fn execute_rec(
                 let mut ins = db.write().unwrap();
                 match key {
                     Some(kv) => {
-                        println!("setting {} to  {}", kv, st_v);
                         ins.put(&kv, ValueObject::StringData(st_v));
                     }
                     _ => {}
@@ -559,7 +638,6 @@ fn execute_rec(
                 match key {
                     Some(kv) => {
                         // get value at key
-                        println!("HLL here -> {}", kv);
                         if let Some(vb) = ins.get(&kv) {
                             match vb {
                                 ValueObject::HLLPointer(hll_obj) => {
@@ -587,7 +665,6 @@ fn execute_rec(
                 let mut ins = db.write().unwrap();
                 match key {
                     Some(kv) => {
-                        println!("setting {} to  {:?}", kv, data);
                         ins.put(&kv, ValueObject::BlobData(data));
                     }
                     _ => {}

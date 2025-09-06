@@ -27,6 +27,10 @@ pub enum QLCommands {
     SHUTDOWN,
     COUNTHLL,
     PERSIST,
+    LOAD_BCUST,
+    LOAD_BDEF,
+    LOAD_HMAP,
+    DELCOL,
 }
 
 #[derive(Clone, Debug)]
@@ -56,9 +60,7 @@ impl AST {
     }
 
     fn add_child(&mut self, val: QLValues) {
-        println!("adding -> {:?}", val);
         let new_node = Box::new(AST::new(val));
-        println!("new node -> {:?}", new_node);
         self.children.push(new_node);
     }
 
@@ -96,23 +98,17 @@ impl AST {
 }
 
 pub fn parse_lokiql(ql: &str) -> Vec<Option<AST>> {
-    println!("Data -> {:?}", ql);
     let result = LokiQLParser::parse(Rule::LOKIQL_FILE, ql).unwrap();
-    println!("{:?}", result);
 
     let mut asts: Vec<Option<AST>> = vec![];
     for pair in result {
-        // println!("HERE -----> {:?}", pair);
         match pair.as_rule() {
             // Parse Each command
             Rule::COMMAND => {
-                // println!("Sending {:?}", pair);
                 let ast = parse_vals(pair, None);
                 asts.push(ast);
             }
-            // Rule::EOI => println!("End of File"),
             _ => {
-                // println!("Something not for sending -> {:?}", pair)
             }
         }
     }
@@ -139,7 +135,6 @@ pub fn parse_individual_item_asql(pair: Pair<Rule>) -> QLValues {
 pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<AST> {
     match pair.as_rule() {
         Rule::DUO_COMMAND => {
-            println!("Duo command here -> {:?}", pair.as_str());
             let mut node = QLValues::QLPhantom;
             match pair.as_str() {
                 "SET" => {
@@ -148,7 +143,6 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                     None
                 }
                 "ADDHLL" => {
-                    println!("in set hll");
                     node = QLValues::QLCommand(QLCommands::ADDHLL);
                     ast_node.unwrap().add_child(node);
                     None
@@ -204,6 +198,26 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
                     ast_node.unwrap().add_child(node);
                     None
                 }
+                "LOAD_BCUST" => {
+                    node = QLValues::QLCommand(QLCommands::LOAD_BCUST);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "LOAD_BDEF" => {
+                    node = QLValues::QLCommand(QLCommands::LOAD_BDEF);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "LOAD_HMAP" => {
+                    node = QLValues::QLCommand(QLCommands::LOAD_HMAP);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
+                "DELCOL" => {
+                    node = QLValues::QLCommand(QLCommands::DELCOL);
+                    ast_node.unwrap().add_child(node);
+                    None
+                }
                 _ => panic!("Command not supported yet!"),
             }
         }
@@ -231,29 +245,23 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
             _ => panic!("Support for command not added"),
         },
         Rule::FLOAT => {
-            println!("num reached int: {:?} ", pair);
             let node_val = QLValues::QLFloat(pair.as_str().parse().unwrap());
             ast_node.unwrap().add_child(node_val);
-            // println!("Float here -> {:?}", pair.as_str());
             None
         }
         Rule::INT => {
-            println!("num reached int: {:?} ", pair);
             let node_val = QLValues::QLInt(pair.as_str().parse().unwrap());
             ast_node.unwrap().add_child(node_val);
-            // println!("Int here -> {:?}", pair.as_str());
             None
         }
         Rule::STRING => {
             let node_val = QLValues::QLString(pair.as_str().to_string());
             ast_node.unwrap().add_child(node_val);
-            // println!("String here -> {:?}", pair.as_str());
             None
         }
         Rule::BOOL => {
             let node_val = QLValues::QLBool(pair.as_str().parse().unwrap());
             ast_node.unwrap().add_child(node_val);
-            // println!("Bool here -> {:?}", pair.as_str());
             None
         }
         Rule::BLOB => {
@@ -266,34 +274,28 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
         }
         Rule::ID => {
             let node_val = QLValues::QLId(pair.as_str().to_string());
-            println!("Key -> {:?}", node_val);
             ast_node.unwrap().add_child(node_val);
             None
         }
         Rule::LIST => {
             let values: Vec<QLValues> = pair.into_inner().map(parse_individual_item_asql).collect();
-            println!("Value -> {:?}", values);
             ast_node.unwrap().add_child(QLValues::QLList(values));
             None
         }
         Rule::EOI => None,
         Rule::COMMAND => {
-            // println!("Command -> {:?}", pair);
             let mut pair_in = pair.clone().into_inner();
             let mut root = Box::new(AST::new(QLValues::QLPhantom));
             let mut root_ast = &mut root;
             if let Some(command) = pair_in.next() {
                 parse_vals(command, Some(&mut root_ast));
                 root_ast = root_ast.get_left_child_mut().unwrap();
-                // println!("\nPARSED COMMAND\n next is {:?}", root_ast);
             };
             if let Some(key) = pair_in.next() {
                 parse_vals(key, Some(root_ast));
-                // println!("\nPARSED KEY\n next is {:?}", root_ast);
             };
             if let Some(value) = pair_in.next() {
                 parse_vals(value, Some(root_ast));
-                // println!("\nPARSED VALUE\n next is {:?}", root_ast);
             };
             return Some(*root);
         }
