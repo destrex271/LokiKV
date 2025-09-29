@@ -1,22 +1,25 @@
 use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
+
+use serde::{Deserialize, Serialize};
 
 use crate::loki_kv::control::ControlFile;
 use crate::loki_kv::loki_kv::ValueObject;
 
+#[derive(Serialize, Deserialize)]
 pub struct WALRecord {
-    timestamp: u64,
+    timestamp: u32,
     key: String,
     value: ValueObject,
 }
 
 impl WALRecord {
-    fn new(timeline_id: u32, key: String, value: ValueObject) -> Self {
+    fn new(timestamp: u32, key: String, value: ValueObject) -> Self {
         WALRecord {
-            timestamp: timeline_id,
+            timestamp: timestamp,
             key: key,
             value: value,
         }
@@ -29,17 +32,62 @@ impl WALRecord {
 // kept for future reference.
 pub struct WALManager {
     control_file: ControlFile,
-    wal_records: HashSet<WALRecord>,
-    cur_timeline: u32,
+    wal_records: Vec<WALRecord>,
+    cur_timeline: u64,
 }
 
 impl WALManager {
     fn new(ctrl_file_path: String) -> Self {
         let control_file: ControlFile = ControlFile::read_from_file_path(ctrl_file_path).unwrap();
+        let timeline = control_file.get_next_timeline_id();
         WALManager {
             control_file,
-            wal_records: HashSet::new(),
-            cur_timeline: 0,
+            wal_records: Vec::new(),
+            cur_timeline: timeline,
         }
+    }
+
+    fn append_record(&mut self, record: WALRecord) {
+        self.wal_records.push(record);
+    }
+
+    fn dump_records(&self) {
+        let wal_file_path = format!(
+            "{}/{}.wal",
+            self.control_file.get_wal_directory_path(),
+            self.cur_timeline.to_string()
+        );
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(false)
+            .open(wal_file_path)
+            .unwrap();
+        for record in &self.wal_records {
+            let data = bincode::serialize(record).unwrap();
+            file.write_all(&data).unwrap();
+        }
+    }
+
+    pub fn replay_records(&self) -> Result<Vec<(String, ValueObject)>, String> {
+        let wal_file_path = format!(
+            "{}/{}.wal",
+            self.control_file.get_wal_directory_path(),
+            self.cur_timeline.to_string()
+        );
+        let mut file = OpenOptions::new().read(true).open(wal_file_path).unwrap();
+        let mut buffer = String::new();
+        file.read_to_string(&mut buffer).unwrap();
+
+        let mut records: Vec<(String, ValueObject)> = Vec::new();
+
+        for line in buffer.lines() {
+            match bincode::deserialize(line.as_bytes()) {
+                Ok(record) => records.push(record),
+                Err(e) => return Err(format!("Failed to deserialize WAL record: {}", e)),
+            }
+        }
+
+        Ok(records)
     }
 }

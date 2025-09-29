@@ -15,6 +15,15 @@ pub struct ControlFile {
 }
 
 impl ControlFile {
+    pub fn get_next_checkpoint_id(&self) -> u64 {
+        self.last_checkpoint_id + 1
+    }
+    pub fn get_next_timeline_id(&self) -> u64 {
+        self.last_wal_timeline + 1
+    }
+    pub fn get_wal_directory_path(&self) -> &str {
+        &self.wal_directory_path
+    }
     pub fn write(
         path: String,
         last_wal_timeline: u64,
