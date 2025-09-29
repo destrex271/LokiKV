@@ -9,7 +9,9 @@ use std::{env, mem};
 
 use clap::builder::StringValueParser;
 use serde::{Deserialize, Serialize};
+use tokio::fs::File;
 
+use crate::loki_kv::wal::WALManager;
 use crate::utils::error_string;
 
 use super::data_structures::btree::btree::BTree;
@@ -60,9 +62,7 @@ impl CollectionProps for CollectionBTree {
     fn put(&mut self, key: &str, value: ValueObject) -> bool {
         let stat = self.store.insert(key.to_string(), value);
         match stat {
-            Some(stat) => {
-                true
-            }
+            Some(stat) => true,
             None => false,
         }
     }
@@ -251,9 +251,7 @@ impl CollectionProps for Collection {
     fn put(&mut self, key: &str, value: ValueObject) -> bool {
         let stat = self.store.insert(key.to_string(), value);
         match stat {
-            Some(stat) => {
-                true
-            }
+            Some(stat) => true,
             None => false,
         }
     }
@@ -336,14 +334,14 @@ pub fn get_data_directory() -> String {
     }
 }
 
-pub fn get_checkpoint_directory() -> String{
+pub fn get_checkpoint_directory() -> String {
     match env::var("CHECKPOINT_DIR") {
         Ok(s) => s,
-        _ => "checkpoints".to_string()
+        _ => "checkpoints".to_string(),
     }
 }
 
-pub fn get_current_timestamp() -> String{
+pub fn get_current_timestamp() -> String {
     let now = SystemTime::now();
     let duration_since_epoch = now.duration_since(UNIX_EPOCH).unwrap();
     let timestamp = duration_since_epoch.as_secs(); // u64
@@ -351,11 +349,19 @@ pub fn get_current_timestamp() -> String{
     return timestamp_str;
 }
 
+pub fn get_current_timestamp_as_u64() -> u64 {
+    let now = SystemTime::now();
+    let duration_since_epoch = now.duration_since(UNIX_EPOCH).unwrap();
+    let timestamp = duration_since_epoch.as_secs(); // u64
+    return timestamp;
+}
+
 pub struct LokiKV {
     collections_hmap: HashMap<String, Collection>,
     collections_bmap: HashMap<String, CollectionBTree>,
     collections_bmap_cust: HashMap<String, CollectionBTreeCustom>,
     current_collection: String,
+    wal_manager: WALManager,
 }
 
 impl LokiKV {
@@ -363,12 +369,14 @@ impl LokiKV {
         let mut collections_hmap: HashMap<String, Collection> = HashMap::new();
         let mut collections_bmap: HashMap<String, CollectionBTree> = HashMap::new();
         let mut collections_bmap_cust: HashMap<String, CollectionBTreeCustom> = HashMap::new();
+        let control_file_path = "/home/akshat/lokikv/control.toml";
         collections_hmap.insert("default".to_string(), Collection::new());
         LokiKV {
             collections_hmap,
             collections_bmap,
             collections_bmap_cust,
             current_collection: "default".to_string(),
+            wal_manager: WALManager::new_without_toml(),
         }
     }
 
@@ -467,8 +475,11 @@ impl LokiKV {
         self.get_current_collection_mut().put(key, value)
     }
 
-    pub fn put_in_collection(&mut self, collection_name: &str, key: &str, value: ValueObject){
-        self.get_collection_by_name_mut(collection_name).put(key, value);
+    pub fn put_in_collection(&mut self, collection_name: &str, key: &str, value: ValueObject) {
+        self.wal_manager
+            .append_record(collection_name.to_string(), key.to_string(), value.clone());
+        self.get_collection_by_name_mut(collection_name)
+            .put(key, value);
     }
 
     // Gets data
@@ -506,36 +517,44 @@ impl LokiKV {
         res
     }
 
-    pub fn checkpoint(&self) {
-        for col in self.collections_bmap_cust.iter(){
-            let pth = format!("{}/{}", get_checkpoint_directory(), get_current_timestamp()); 
+    pub fn checkpoint(&mut self) {
+        let checkpoint_id = get_current_timestamp_as_u64();
+
+        for col in self.collections_bmap_cust.iter() {
+            let pth = format!("{}/{}", get_checkpoint_directory(), checkpoint_id);
             let pairs = col.1.clone().generate_pairs();
-            if pairs.len() == 0{
+            if pairs.len() == 0 {
                 continue;
             }
             let persistor = Persistor::new(pth);
             persistor.persist(pairs, col.0.clone());
         }
 
-        for col in self.collections_bmap.iter(){
-            let pth = format!("{}/{}", get_checkpoint_directory(), get_current_timestamp()); 
+        for col in self.collections_bmap.iter() {
+            let pth = format!("{}/{}", get_checkpoint_directory(), checkpoint_id);
             let pairs = col.1.clone().generate_pairs();
-            if pairs.len() == 0{
+            if pairs.len() == 0 {
                 continue;
             }
             let persistor = Persistor::new(pth);
             persistor.persist(pairs, col.0.clone());
         }
 
-
-        for col in self.collections_hmap.iter(){
-            let pth = format!("{}/{}", get_checkpoint_directory(), get_current_timestamp()); 
+        for col in self.collections_hmap.iter() {
+            let pth = format!("{}/{}", get_checkpoint_directory(), checkpoint_id);
             let pairs = col.1.clone().generate_pairs();
-            if pairs.len() == 0{
+            if pairs.len() == 0 {
                 continue;
             }
             let persistor = Persistor::new(pth);
-            persistor.persist(pairs,col.0.clone());
+            persistor.persist(pairs, col.0.clone());
         }
+
+        self.wal_manager.dump_records(checkpoint_id);
+    }
+
+    pub fn display_wal(&self) -> String {
+        let res = self.wal_manager.display_wal();
+        res
     }
 }

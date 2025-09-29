@@ -119,7 +119,7 @@ impl LokiServer {
                     info("Checkpointing...");
                     let ins = self.db_instance.clone();
                     tokio::spawn(async move {
-                        let db = ins.read().unwrap();
+                        let mut db = ins.write().unwrap();
                         db.checkpoint();
                     });
                 }
