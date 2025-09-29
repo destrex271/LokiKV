@@ -5,19 +5,12 @@ use std::time::SystemTime;
 use crate::loki_kv::data_structures::hyperloglog::HLL;
 use crate::loki_kv::loki_kv::get_data_directory;
 use crate::loki_kv::persist::Persistor;
+use crate::utils::{
+    error, error_string, info, info_string, success, success_string, warning, warning_string,
+};
 use crate::{
     loki_kv::loki_kv::{LokiKV, ValueObject},
     parser::parser::QLCommands,
-};
-use crate::utils::{
-    info,
-    error,
-    info_string,
-    error_string,
-    warning_string,
-    success_string,
-    warning,
-    success,
 };
 
 use super::parser::{QLValues, AST};
@@ -364,7 +357,7 @@ fn execute_rec(
                         local_key
                     )))
                 }
-                QLCommands::PERSIST  => {
+                QLCommands::PERSIST => {
                     let table_node = node.get_left_child();
 
                     if let Some(node) = table_node {
@@ -456,6 +449,11 @@ fn execute_rec(
                 QLCommands::SHUTDOWN => {
                     process::exit(1);
                 }
+                QLCommands::DISPLAY_WAL => {
+                    let ins = db.read().unwrap();
+                    let data = ins.display_wal();
+                    Some(ValueObject::OutputString(data))
+                }
             }
         }
         QLValues::QLId(key_val) => Some(ValueObject::OutputString(key_val)),
@@ -497,8 +495,7 @@ fn execute_rec(
                 match key {
                     Some(kv) => {
                         if let Some(cur_list) = ins.get(&local_key) {
-                            if let ValueObject::ListData(new_vec) = cur_list.clone() {
-                            }
+                            if let ValueObject::ListData(new_vec) = cur_list.clone() {}
                         }
                         None
                     }
