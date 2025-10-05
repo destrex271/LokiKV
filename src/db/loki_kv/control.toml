@@ -1,4 +1,4 @@
 last_wal_timeline = 5
 last_checkpoint_id = 3
-checkpoint_directory_path = "~/lokikv/checkpoints"
-wal_directory_path = "~/lokikv/wal"
+checkpoint_directory_path = "/home/akshat/lokikv/checkpoints"
+wal_directory_path = "/home/akshat/lokikv/wal"

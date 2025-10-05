@@ -1,12 +1,14 @@
 use bincode;
 use serde::{Deserialize, Serialize};
 use std::{
-    fs::File,
+    fs::{create_dir_all, File},
     io::{Read, Write},
     path::Path,
 };
 
-#[derive(Serialize, Deserialize)]
+use crate::utils::info_string;
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ControlFile {
     last_wal_timeline: u64,
     last_checkpoint_id: u64,
@@ -24,6 +26,9 @@ impl ControlFile {
     pub fn get_wal_directory_path(&self) -> &str {
         &self.wal_directory_path
     }
+    pub fn get_checkpoint_directory_path(&self) -> &str {
+        &self.checkpoint_directory_path
+    }
     pub fn write(
         path: String,
         last_wal_timeline: u64,
@@ -31,6 +36,18 @@ impl ControlFile {
         checkpoint_directory_path: String,
         wal_directory_path: String,
     ) -> Result<ControlFile, String> {
+        // Create the WAL and checkpoint directories
+        let wal_dir = Path::new(&wal_directory_path);
+        let checkpoint_dir = Path::new(&checkpoint_directory_path);
+        match create_dir_all(wal_dir) {
+            Ok(_) => info_string("Created WAL directory".to_string()),
+            Err(err) => return Err(err.to_string()),
+        }
+        match create_dir_all(checkpoint_dir) {
+            Ok(_) => info_string("Created checkpoint directory".to_string()),
+            Err(err) => return Err(err.to_string()),
+        }
+
         let ctrl_file = ControlFile {
             last_wal_timeline,
             last_checkpoint_id,
@@ -60,7 +77,8 @@ impl ControlFile {
                 // take a lock on the file
                 let mut buffer = String::new();
                 file.read_to_string(&mut buffer).unwrap();
-                toml::from_str(&buffer).unwrap()
+                let op = toml::from_str::<ControlFile>(&buffer).unwrap();
+                return Ok(op);
             }
             Err(err) => Err(format!("Failed to open file: {}", err)),
         }

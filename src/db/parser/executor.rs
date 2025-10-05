@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 
 use crate::loki_kv::data_structures::hyperloglog::HLL;
-use crate::loki_kv::loki_kv::get_data_directory;
+use crate::loki_kv::loki_kv::{get_control_file_path, get_data_directory};
 use crate::loki_kv::persist::Persistor;
 use crate::utils::{
     error, error_string, info, info_string, success, success_string, warning, warning_string,
@@ -50,7 +50,7 @@ impl Executor {
         Executor {
             database: db,
             asts,
-            persistor: Persistor::new(get_data_directory()),
+            persistor: Persistor::new(get_control_file_path()),
         }
     }
 

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use tokio::fs::File;
 
 use crate::loki_kv::wal::WALManager;
-use crate::utils::error_string;
+use crate::utils::{error_string, info_string};
 
 use super::data_structures::btree::btree::BTree;
 use super::data_structures::hyperloglog::HLL;
@@ -334,6 +334,13 @@ pub fn get_data_directory() -> String {
     }
 }
 
+pub fn get_control_file_path() -> String {
+    match env::var("CONTROL_FILE_PATH") {
+        Ok(s) => s,
+        _ => "./control.toml".to_string(),
+    }
+}
+
 pub fn get_checkpoint_directory() -> String {
     match env::var("CHECKPOINT_DIR") {
         Ok(s) => s,
@@ -376,7 +383,7 @@ impl LokiKV {
             collections_bmap,
             collections_bmap_cust,
             current_collection: "default".to_string(),
-            wal_manager: WALManager::new_without_toml(),
+            wal_manager: WALManager::new(get_control_file_path()),
         }
     }
 
@@ -472,6 +479,12 @@ impl LokiKV {
 
     // Inserts Data
     pub fn put(&mut self, key: &str, value: ValueObject) -> bool {
+        info_string("Appending to wal!".to_string());
+        self.wal_manager.append_record(
+            self.current_collection.to_string(),
+            key.to_string(),
+            value.clone(),
+        );
         self.get_current_collection_mut().put(key, value)
     }
 
@@ -526,7 +539,7 @@ impl LokiKV {
             if pairs.len() == 0 {
                 continue;
             }
-            let persistor = Persistor::new(pth);
+            let persistor = Persistor::new(get_control_file_path());
             persistor.persist(pairs, col.0.clone());
         }
 
@@ -536,7 +549,7 @@ impl LokiKV {
             if pairs.len() == 0 {
                 continue;
             }
-            let persistor = Persistor::new(pth);
+            let persistor = Persistor::new(get_control_file_path());
             persistor.persist(pairs, col.0.clone());
         }
 
@@ -546,7 +559,7 @@ impl LokiKV {
             if pairs.len() == 0 {
                 continue;
             }
-            let persistor = Persistor::new(pth);
+            let persistor = Persistor::new(get_control_file_path());
             persistor.persist(pairs, col.0.clone());
         }
 
