@@ -1,5 +1,6 @@
 use tokio::sync::RwLock;
 
+use crate::loki_kv::control::ControlFile;
 // To persist data on disk
 use crate::loki_kv::loki_kv::{
     Collection, CollectionBTree, CollectionBTreeCustom, CollectionProps, LokiKV, ValueObject,
@@ -47,20 +48,21 @@ impl StoragePage {
 // Object to save collection to disk
 #[derive(Clone)]
 pub struct Persistor {
-    directory_name: String,
+    control_file: ControlFile,
 }
 
 impl Persistor {
-    pub fn new(directory_name: String) -> Self {
-        let _ = match create_dir_all(directory_name.clone()) {
-            Ok(_) => info("Created new directory"),
-            Err(e) => println!("got some error, lets ignore it for now...{}", e),
-        };
-        Persistor { directory_name }
+    pub fn new(control_file_path: String) -> Self {
+        let control_file = ControlFile::read_from_file_path(control_file_path).unwrap();
+        Persistor { control_file }
     }
 
     pub fn load_to_btree(&self, collection_name: String) -> (String, CollectionBTreeCustom) {
-        let fin_path = format!("{}/{}", self.directory_name, collection_name);
+        let fin_path = format!(
+            "{}/{}",
+            self.control_file.get_checkpoint_directory_path(),
+            collection_name
+        );
         let dir = fs::read_dir(&fin_path).expect("Failed to read directory");
 
         let mut col = CollectionBTreeCustom::new();
@@ -79,7 +81,11 @@ impl Persistor {
     }
 
     pub fn load_to_btree_def(&self, collection_name: String) -> (String, CollectionBTree) {
-        let fin_path = format!("{}/{}", self.directory_name, collection_name);
+        let fin_path = format!(
+            "{}/{}",
+            self.control_file.get_checkpoint_directory_path(),
+            collection_name
+        );
         let dir = fs::read_dir(&fin_path).expect("Failed to read directory");
 
         let mut col = CollectionBTree::new();
@@ -98,7 +104,11 @@ impl Persistor {
     }
 
     pub fn load_to_hmap(&self, collection_name: String) -> (String, Collection) {
-        let fin_path = format!("{}/{}", self.directory_name, collection_name);
+        let fin_path = format!(
+            "{}/{}",
+            self.control_file.get_checkpoint_directory_path(),
+            collection_name
+        );
         let dir = fs::read_dir(&fin_path).expect("Failed to read directory");
 
         let mut col = Collection::new();
@@ -118,7 +128,8 @@ impl Persistor {
 
     pub fn persist(&self, content: Vec<(String, ValueObject)>, collection_name: String) {
         let mut cnt = 0;
-        let fin_path = self.directory_name.clone() + "/" + collection_name.as_str();
+        let dir = self.control_file.get_checkpoint_directory_path();
+        let fin_path = dir.to_string() + "/" + collection_name.as_str();
         let _ = match create_dir_all(fin_path.clone()) {
             Ok(_) => info("Created new directory"),
             Err(..) => error("got some error, lets ignore it for now..."),

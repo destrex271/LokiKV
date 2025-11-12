@@ -47,7 +47,6 @@ async fn handle_connection(
         //     .map_err(|e| format!("Invalid UTF-8 data: {}", e))
         //     .unwrap();
 
-
         let asts = parse_lokiql(&request_line);
         let mut ast_exector = Executor::new(db_instance.clone(), asts);
         let responses = ast_exector.execute();
@@ -91,13 +90,12 @@ impl LokiServer {
     }
 
     pub async fn start_event_loop(&mut self) {
-        let checkpoint_itr: u64 = match env::var("CHECKPOINT_INTERVAL"){
+        let checkpoint_itr: u64 = match env::var("CHECKPOINT_INTERVAL") {
             Ok(n) => n.parse().unwrap(),
-            _ => 120 as u64
+            _ => 120 as u64,
         };
 
         let mut checkpoint_timer = interval(Duration::from_secs(checkpoint_itr));
-
 
         loop {
             select! {
@@ -121,19 +119,11 @@ impl LokiServer {
                     info("Checkpointing...");
                     let ins = self.db_instance.clone();
                     tokio::spawn(async move {
-                        let db = ins.read().unwrap();
+                        let mut db = ins.write().unwrap();
                         db.checkpoint();
                     });
                 }
             }
-        }
-    }
-
-    pub async fn start_checkpointing(&self) {
-        loop{
-            let ins = self.db_instance.read().unwrap();
-            ins.checkpoint();
-            sleep(Duration::from_secs(10)).await;
         }
     }
 }

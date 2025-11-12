@@ -31,6 +31,7 @@ pub enum QLCommands {
     LOAD_BDEF,
     LOAD_HMAP,
     DELCOL,
+    DISPLAY_WAL,
 }
 
 #[derive(Clone, Debug)]
@@ -108,8 +109,7 @@ pub fn parse_lokiql(ql: &str) -> Vec<Option<AST>> {
                 let ast = parse_vals(pair, None);
                 asts.push(ast);
             }
-            _ => {
-            }
+            _ => {}
         }
     }
 
@@ -239,6 +239,11 @@ pub fn parse_vals(pair: Pair<Rule>, ast_node: Option<&mut Box<AST>>) -> Option<A
             }
             "SHUTDOWN" => {
                 let node = QLValues::QLCommand(QLCommands::SHUTDOWN);
+                ast_node.unwrap().add_child(node);
+                None
+            }
+            "DISPLAY_WAL" => {
+                let node = QLValues::QLCommand(QLCommands::DISPLAY_WAL);
                 ast_node.unwrap().add_child(node);
                 None
             }
