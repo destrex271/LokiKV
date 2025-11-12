@@ -14,6 +14,7 @@ pub struct ControlFile {
     last_checkpoint_id: u64,
     checkpoint_directory_path: String,
     wal_directory_path: String,
+    current_leader_value: Option<u64>,
 }
 
 impl ControlFile {
@@ -28,6 +29,9 @@ impl ControlFile {
     }
     pub fn get_checkpoint_directory_path(&self) -> &str {
         &self.checkpoint_directory_path
+    }
+    pub fn get_current_leader_identifier(&self) -> Option<u64>{
+        self.current_leader_value.clone()
     }
     pub fn write(
         path: String,
