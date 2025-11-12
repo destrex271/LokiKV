@@ -125,19 +125,24 @@ impl WALManager {
             self.control_file.get_wal_directory_path(),
             self.cur_timeline.to_string()
         );
-        let mut file = OpenOptions::new().read(true).open(wal_file_path).unwrap();
-        let mut buffer = String::new();
-        file.read_to_string(&mut buffer).unwrap();
+        let file = OpenOptions::new().read(true).open(wal_file_path).unwrap();
+        let mut reader = BufReader::new(file);
 
         let mut records: Vec<(String, ValueObject)> = Vec::new();
 
-        for line in buffer.lines() {
-            match bincode::deserialize(line.as_bytes()) {
+        loop {
+            match bincode::deserialize_from::<_, (String, ValueObject)>(&mut reader) {
                 Ok(record) => records.push(record),
-                Err(e) => return Err(format!("Failed to deserialize WAL record: {}", e)),
+                Err(e) => match *e {
+                    ErrorKind::Io(ref io_error)
+                        if io_error.kind() == std::io::ErrorKind::UnexpectedEof =>
+                    {
+                        break;
+                    }
+                    _ => return Err(format!("Failed to deserialize wal records: {}", e)),
+                },
             }
         }
-
         Ok(records)
     }
 
