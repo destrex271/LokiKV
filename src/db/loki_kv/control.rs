@@ -34,15 +34,15 @@ impl ControlFile {
         &self.checkpoint_directory_path
     }
 
-    pub fn get_current_leader_identifier(&self) -> Option<u64>{
+    pub fn get_current_leader_identifier(&self) -> Option<u64> {
         self.current_leader_value.clone()
     }
 
-    pub fn get_self_identifier(&self) -> Option<u64>{
+    pub fn get_self_identifier(&self) -> Option<u64> {
         self.self_identifier.clone()
     }
 
-    pub fn set_current_leader_identifier(&mut self, current_leader_value: u64){
+    pub fn set_current_leader_identifier(&mut self, current_leader_value: u64) {
         self.current_leader_value = Some(current_leader_value.clone());
     }
 
@@ -50,9 +50,9 @@ impl ControlFile {
         self.self_identifier = Some(id.clone());
     }
 
-    pub fn is_leader(&self) -> bool{
-        if self.self_identifier.is_some() && self.current_leader_value.is_some(){
-            if self.self_identifier.unwrap() == self.current_leader_value.unwrap(){
+    pub fn is_leader(&self) -> bool {
+        if self.self_identifier.is_some() && self.current_leader_value.is_some() {
+            if self.self_identifier.unwrap() == self.current_leader_value.unwrap() {
                 return true;
             }
         }
@@ -82,6 +82,8 @@ impl ControlFile {
             last_checkpoint_id,
             checkpoint_directory_path,
             wal_directory_path,
+            current_leader_value: None,
+            self_identifier: Some(1 as u64),
         };
 
         // Take lock on control file
