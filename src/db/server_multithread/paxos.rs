@@ -2,7 +2,7 @@ use std::net::{SocketAddr};
 
 use tokio::net::UdpSocket;
 
-use crate::loki_kv::control::ControlFile;
+use crate::loki_kv::{control::ControlFile, loki_kv::get_control_file_path};
 
 pub struct ServiceManager {
     udp_socket_send: UdpSocket,
@@ -12,10 +12,11 @@ pub struct ServiceManager {
 
 impl ServiceManager {
     pub fn new() -> Self {
-        let listen_addr: SocketAddr = "0.0.0.0:8080".parse().unwrap();
+        let control_file = ControlFile::read_from_file_path(get_control_file_path()).unwrap();
+        let listen_addr: SocketAddr = control_file.get_listen_addr().parse().unwrap();
         let std_socket = std::net::UdpSocket::bind(listen_addr).unwrap();
 
-        let consume_addr: SocketAddr = "0.0.0.0:8081".parse().unwrap();
+        let consume_addr: SocketAddr = control_file.get_consume_addr().parse().unwrap();
         let std_consumer_socket = std::net::UdpSocket::bind(consume_addr).unwrap();
 
         std_socket.set_broadcast(true);

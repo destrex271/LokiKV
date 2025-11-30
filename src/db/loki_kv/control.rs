@@ -16,6 +16,8 @@ pub struct ControlFile {
     wal_directory_path: String,
     current_leader_value: Option<u64>,
     self_identifier: Option<u64>,
+    listen_addr: String,
+    consume_addr: String
 }
 
 impl ControlFile {
@@ -24,6 +26,14 @@ impl ControlFile {
     }
     pub fn get_next_timeline_id(&self) -> u64 {
         self.last_wal_timeline + 1
+    }
+
+    pub fn get_listen_addr(&self) -> &str{
+        &self.listen_addr
+    }
+
+    pub fn get_consume_addr(&self) -> &str{
+        &self.consume_addr
     }
 
     pub fn get_wal_directory_path(&self) -> &str {
@@ -64,6 +74,8 @@ impl ControlFile {
         last_checkpoint_id: u64,
         checkpoint_directory_path: String,
         wal_directory_path: String,
+        listen_addr: Option<String>,
+        consume_addr: Option<String>
     ) -> Result<ControlFile, String> {
         // Create the WAL and checkpoint directories
         let wal_dir = Path::new(&wal_directory_path);
@@ -77,6 +89,22 @@ impl ControlFile {
             Err(err) => return Err(err.to_string()),
         }
 
+        let final_listen_addr: String = match listen_addr{
+            Some(addr) => addr,
+            None => {
+                info_string("no listening address provided.. defaulting to 0.0.0.0:8080".to_string());
+                return "0.0.0.0:8080".to_string()
+            }
+        };
+
+        let final_consume_addr: String = match consume_addr{
+            Some(addr) => addr,
+            None => {
+                info_string("no listening address provided.. defaulting to 0.0.0.0:8081".to_string());
+                return "0.0.0.0:8081".to_string()
+            }
+        };
+
         let ctrl_file = ControlFile {
             last_wal_timeline,
             last_checkpoint_id,
@@ -84,6 +112,8 @@ impl ControlFile {
             wal_directory_path,
             current_leader_value: None,
             self_identifier: Some(1 as u64),
+            listen_addr: Some(final_listen_addr),
+            consume_addr: Some(final_consume_addr)
         };
 
         // Take lock on control file
