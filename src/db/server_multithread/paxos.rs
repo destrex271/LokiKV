@@ -2,7 +2,7 @@ use std::net::{SocketAddr};
 
 use tokio::net::UdpSocket;
 
-use crate::loki_kv::{control::ControlFile, loki_kv::get_control_file_path};
+use crate::{loki_kv::{control::ControlFile, loki_kv::get_control_file_path}, utils::info_string};
 
 pub struct ServiceManager {
     udp_socket_send: UdpSocket,
@@ -37,6 +37,16 @@ impl ServiceManager {
         loop{
             // TODO: Add consumption logic
             // Somehitng like a go-routine treatment here?
+            let mut msg_bytes: Vec<u8> = vec![];
+            self.udp_socket_recv.recv_from(&mut msg_bytes);
+
+            tokio::spawn(
+                async move {
+                    // Log message
+                    info_string(format!("Recieved the following message: {:?}", msg_bytes));
+                }
+            );
+
             break;
         }
         Ok(())
