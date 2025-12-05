@@ -10,6 +10,8 @@ use crate::utils::info_string;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ControlFile {
+    host: String,
+    port: u16,
     last_wal_timeline: u64,
     last_checkpoint_id: u64,
     checkpoint_directory_path: String,
@@ -21,6 +23,12 @@ pub struct ControlFile {
 }
 
 impl ControlFile {
+    pub fn get_hostname(&self) -> String{
+        return self.host.clone();
+    }
+    pub fn get_port(&self) -> u16{
+        return self.port;
+    }
     pub fn get_next_checkpoint_id(&self) -> u64 {
         self.last_checkpoint_id + 1
     }
@@ -69,6 +77,8 @@ impl ControlFile {
         return false;
     }
     pub fn write(
+        host: String,
+        port: u16,
         path: String,
         last_wal_timeline: u64,
         last_checkpoint_id: u64,
@@ -89,11 +99,11 @@ impl ControlFile {
             Err(err) => return Err(err.to_string()),
         }
 
-        let final_listen_addr: String = match listen_addr{
+        let final_listen_addr: String = match listen_addr {
             Some(addr) => addr,
             None => {
                 info_string("no listening address provided.. defaulting to 0.0.0.0:8080".to_string());
-                return "0.0.0.0:8080".to_string()
+                "0.0.0.0:8080".to_string()
             }
         };
 
@@ -101,19 +111,21 @@ impl ControlFile {
             Some(addr) => addr,
             None => {
                 info_string("no listening address provided.. defaulting to 0.0.0.0:8081".to_string());
-                return "0.0.0.0:8081".to_string()
+                "0.0.0.0:8081".to_string()
             }
         };
 
         let ctrl_file = ControlFile {
+            host,
+            port,
             last_wal_timeline,
             last_checkpoint_id,
             checkpoint_directory_path,
             wal_directory_path,
             current_leader_value: None,
             self_identifier: Some(1 as u64),
-            listen_addr: Some(final_listen_addr),
-            consume_addr: Some(final_consume_addr)
+            listen_addr: final_listen_addr,
+            consume_addr: final_consume_addr
         };
 
         // Take lock on control file

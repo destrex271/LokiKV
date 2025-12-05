@@ -1,4 +1,5 @@
-use crate::loki_kv::loki_kv::{LokiKV, ValueObject};
+use crate::loki_kv::control::ControlFile;
+use crate::loki_kv::loki_kv::{LokiKV, ValueObject, get_control_file_path};
 use crate::parser::executor::Executor;
 use crate::parser::parser::parse_lokiql;
 use crate::utils::{error_string, info, info_string, warning};
@@ -23,6 +24,7 @@ pub struct LokiServer {
     port: u16,
     thread_count: usize,
     db_instance: Arc<RwLock<LokiKV>>,
+    control_file: ControlFile,
 }
 //
 async fn handle_connection(
@@ -66,8 +68,11 @@ async fn handle_connection(
 }
 
 impl LokiServer {
-    pub async fn new(host: String, port: u16, thread_count: usize) -> Self {
-        let addr = format!("{}:{}", host, port);
+    pub async fn new(thread_count: usize) -> Self {
+        let control_file = ControlFile::read_from_file_path(get_control_file_path()).unwrap();
+        let host: String = control_file.get_hostname();
+        let port: u16 = control_file.get_port();
+        let addr = format!("{}:{}", control_file.get_hostname(), control_file.get_port());
         info_string(format!("Trying to start server at -> {}", addr));
         let tcp_listener = TcpListener::bind(addr).await;
 
@@ -81,6 +86,7 @@ impl LokiServer {
                     port,
                     thread_count,
                     db_instance: Arc::new(RwLock::new(db_instance)),
+                    control_file: control_file,
                 }
             }
             Err(_) => {
