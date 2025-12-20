@@ -117,7 +117,7 @@ impl LokiServer {
         let mut paxos_gossip_broadcast_timer = interval(Duration::from_secs(paxos_itr*30));
         // let mut paxos_gossip_consumer_timer = interval(Duration::from_secs(paxos_itr*60));
 
-        let mut paxos_node = PaxosNode::new_node();
+        let mut paxos_node: Arc<tokio::sync::RwLock<PaxosNode>> = Arc::new(tokio::sync::RwLock::new(PaxosNode::new_node()));
 
         let mut should_broadcast = true;
 
@@ -150,25 +150,27 @@ impl LokiServer {
                 }
 
                 _ = paxos_gossip_broadcast_timer.tick() => {
-                    // Send out self information 10 times
-                    if should_broadcast{
-                        for _ in 0..10{
-                            info("Gossiping self information with strangers!");
-                            let res = paxos_node.gossip().await;
-                            match res{
-                                Ok(_) => info("Successfully shared gossip information."),
-                                Err(err) => info_string(format!("Failed to share gossip information {}", err))
-                            };
+                    let node = paxos_node.clone();
+                    tokio::spawn( async move{
+                        // Send out self information 10 times
+                        if should_broadcast{
+                            for _ in 0..10{
+                                info("Gossiping self information with strangers!");
+                                let res = node.write().await.gossip().await;
+                                match res{
+                                    Ok(_) => info("Successfully shared gossip information."),
+                                    Err(err) => info_string(format!("Failed to share gossip information {}", err))
+                                };
+                            }
+                            sleep(Duration::from_secs(10)).await;
+                        }else{
+                            // Consume gossip data
+                            info("Consuming gossip from strangers..(for now)");
+                            node.write().await.gossip_consume().await;
                         }
-                        sleep(Duration::from_secs(10)).await;
-                    }else{
-                        // Consume gossip data
-                        info("Consuming gossip from strangers..(for now)");
-                        paxos_node.gossip_consume().await;
-                    }
 
+                    });
                     should_broadcast = !should_broadcast;
-
                 }
             }
         }
