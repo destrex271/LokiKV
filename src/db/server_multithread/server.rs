@@ -10,6 +10,7 @@ use std::{
     ops::{Deref, DerefMut},
     sync::{Arc, RwLock},
 };
+use rand;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::select;
 use tokio::time::{interval, sleep};
@@ -27,6 +28,12 @@ pub struct LokiServer {
     db_instance: Arc<RwLock<LokiKV>>,
     control_file: ControlFile,
 }
+
+fn decide_random_bool() -> bool{
+    let x: u8 = rand::random();
+    x % 2 == 0
+}
+
 //
 async fn handle_connection(
     stream: TcpStream,
@@ -117,9 +124,9 @@ impl LokiServer {
         let mut paxos_gossip_broadcast_timer = interval(Duration::from_secs(paxos_itr*30));
         // let mut paxos_gossip_consumer_timer = interval(Duration::from_secs(paxos_itr*60));
 
-        let mut paxos_node: Arc<tokio::sync::RwLock<PaxosNode>> = Arc::new(tokio::sync::RwLock::new(PaxosNode::new_node()));
+        let paxos_node: Arc<tokio::sync::RwLock<PaxosNode>> = Arc::new(tokio::sync::RwLock::new(PaxosNode::new_node()));
 
-        let mut should_broadcast = true;
+        let mut should_broadcast = decide_random_bool();
 
         loop {
             select! {

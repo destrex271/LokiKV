@@ -12,13 +12,28 @@ This project is specifically for learning purposes only.
 
 To try out loki-kv you can follow these steps:
 
+Create a control file(toml):
+```toml
+host = "localhost"
+port = 8765
+last_wal_timeline = 0
+last_checkpoint_id = 0
+checkpoint_directory_path = "/home/akshat/lokikv/checkpoints_follower"
+wal_directory_path = "/home/akshat/lokikv/wal_follower"
+current_leader_value = 12 # optional
+self_identifier = 13 # optional
+send_addr = "0.0.0.0:8070"
+consume_addr = "0.0.0.0:8071"
+checkpoint_timer_interval = 1
+paxos_timer_interval = 2
+gossip_timeout = 300
+```
+
 ```bash
 git clone https://github.com/destrex271/LokiKV
 
-# setup persistnace directory; defaults to a new data directory in the folder where server is running
-export PERSIST_DATA=<fullpath>
-export CHECKPOINT_DIR=<fullpath>
-export CHECKPOINT_INTERVAL=<time in seconds>
+# path to control file 
+export CONTROL_FILE_PATH="/home/akshat/control_follow.toml"
 
 cargo run --bin server-db # in a separate terminal
 # runs on localhost:8765 by default
@@ -170,7 +185,10 @@ Single commands don't need to follow a `;`
 
 <hr/>
 
+## Node Discovery
+
+LokiKV currently uses a very adhoc version of the gossip protocol where we broadcast all the information across the network. All the nodes have varying values for paxos timer i.e. service discovery timer to facilitate for a smoother discovery flow and avoiding deadlocks(i.e. all the nodes begin consumption and broadcast at the same time).
+
 # TODO
 
  - Add support for distributed setup via Paxos Algorithm
- - Add WAL support
