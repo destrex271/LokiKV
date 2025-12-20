@@ -29,7 +29,6 @@ pub enum ValueObject {
     OutputString(String),
     BlobData(Vec<u8>),
     ListData(Vec<ValueObject>),
-    #[serde(skip_serializing, skip_deserializing)]
     HLLPointer(HLL),
 }
 

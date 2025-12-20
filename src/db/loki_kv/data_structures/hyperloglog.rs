@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -9,7 +10,7 @@ use crate::loki_kv::loki_kv::ValueObject;
 const P_BITS: u32 = 16;
 const M: usize = 2_i32.pow(P_BITS) as usize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HLL {
     // leading zeros -> Count of elements
     streams: Vec<usize>,
