@@ -62,7 +62,10 @@ impl WALManager {
             "/home/akshat/lokikv/checkpoints".to_string(),
             "/home/akshat/lokikv/wal".to_string(),
             Some("0.0.0.0:8080".to_string()),
-            Some("0.0.0.0:8081".to_string())
+            Some("0.0.0.0:8081".to_string()),
+            None,
+            None,
+            None
         )
         .unwrap();
         let timeline = control_file.get_next_timeline_id();

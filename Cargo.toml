@@ -24,3 +24,4 @@ pest_derive = "2.6"
 bit-set = "0.8.0"
 paris = { version = "1.5", features = ["timestamps"] }
 toml = "0.9.7"
+local-ip-address = "0.6.8"

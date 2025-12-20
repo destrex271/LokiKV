@@ -18,8 +18,11 @@ pub struct ControlFile {
     wal_directory_path: String,
     current_leader_value: Option<u64>,
     self_identifier: Option<u64>,
-    listen_addr: String,
-    consume_addr: String
+    send_addr: String,
+    consume_addr: String,
+    checkpoint_timer_interval: Option<u64>,
+    paxos_timer_interval: Option<u64>,
+    gossip_timeout: Option<u64>
 }
 
 impl ControlFile {
@@ -36,8 +39,8 @@ impl ControlFile {
         self.last_wal_timeline + 1
     }
 
-    pub fn get_listen_addr(&self) -> &str{
-        &self.listen_addr
+    pub fn get_send_addr(&self) -> &str{
+        &self.send_addr
     }
 
     pub fn get_consume_addr(&self) -> &str{
@@ -58,6 +61,27 @@ impl ControlFile {
 
     pub fn get_self_identifier(&self) -> Option<u64> {
         self.self_identifier.clone()
+    }
+
+    pub fn get_checkpoint_timer_interval(&self) -> u64 {
+        match self.checkpoint_timer_interval{
+            Some(val) => return val,
+            None => return 1
+        }
+    }
+
+    pub fn get_paxos_timer_interval(&self) -> u64 {
+        match self.paxos_timer_interval{
+            Some(val) => return val,
+            None => return 5
+        }
+    }
+
+    pub fn get_gossip_timeout(&self) -> u64{
+        match self.gossip_timeout{
+            Some(val) => return val,
+            None => return 300
+        }
     }
 
     pub fn set_current_leader_identifier(&mut self, current_leader_value: u64) {
@@ -84,8 +108,11 @@ impl ControlFile {
         last_checkpoint_id: u64,
         checkpoint_directory_path: String,
         wal_directory_path: String,
-        listen_addr: Option<String>,
-        consume_addr: Option<String>
+        send_addr: Option<String>,
+        consume_addr: Option<String>,
+        checkpoint_timer_interval: Option<u64>,
+        paxos_timer_interval: Option<u64>,
+        gossip_timeout: Option<u64>
     ) -> Result<ControlFile, String> {
         // Create the WAL and checkpoint directories
         let wal_dir = Path::new(&wal_directory_path);
@@ -99,7 +126,7 @@ impl ControlFile {
             Err(err) => return Err(err.to_string()),
         }
 
-        let final_listen_addr: String = match listen_addr {
+        let final_send_addr: String = match send_addr {
             Some(addr) => addr,
             None => {
                 info_string("no listening address provided.. defaulting to 0.0.0.0:8080".to_string());
@@ -124,8 +151,11 @@ impl ControlFile {
             wal_directory_path,
             current_leader_value: None,
             self_identifier: Some(1 as u64),
-            listen_addr: final_listen_addr,
-            consume_addr: final_consume_addr
+            send_addr: final_send_addr,
+            consume_addr: final_consume_addr,
+            checkpoint_timer_interval,
+            paxos_timer_interval,
+            gossip_timeout
         };
 
         // Take lock on control file
