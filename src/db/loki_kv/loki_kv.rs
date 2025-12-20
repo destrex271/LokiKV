@@ -29,7 +29,6 @@ pub enum ValueObject {
     OutputString(String),
     BlobData(Vec<u8>),
     ListData(Vec<ValueObject>),
-    #[serde(skip_serializing, skip_deserializing)]
     HLLPointer(HLL),
 }
 
@@ -337,7 +336,7 @@ pub fn get_data_directory() -> String {
 pub fn get_control_file_path() -> String {
     match env::var("CONTROL_FILE_PATH") {
         Ok(s) => s,
-        _ => "./control.toml".to_string(),
+        _ => "/home/akshat/control.toml".to_string(),
     }
 }
 

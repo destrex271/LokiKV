@@ -1,6 +1,8 @@
-use crate::loki_kv::loki_kv::{LokiKV, ValueObject};
+use crate::loki_kv::control::ControlFile;
+use crate::loki_kv::loki_kv::{LokiKV, ValueObject, get_control_file_path};
 use crate::parser::executor::Executor;
 use crate::parser::parser::parse_lokiql;
+use crate::server_multithread::paxos::PaxosNode;
 use crate::utils::{error_string, info, info_string, warning};
 use std::env;
 use std::time::{Duration, Instant};
@@ -23,6 +25,7 @@ pub struct LokiServer {
     port: u16,
     thread_count: usize,
     db_instance: Arc<RwLock<LokiKV>>,
+    control_file: ControlFile,
 }
 //
 async fn handle_connection(
@@ -47,27 +50,43 @@ async fn handle_connection(
         //     .map_err(|e| format!("Invalid UTF-8 data: {}", e))
         //     .unwrap();
 
-        let asts = parse_lokiql(&request_line);
-        let mut ast_exector = Executor::new(db_instance.clone(), asts);
-        let responses = ast_exector.execute();
-
         let mut resp_str = String::new();
-        // Improve output result
-        for response in responses.iter() {
-            if let val = response {
-                resp_str += &format!("{:?}\n", val);
-            };
+
+        let asts = parse_lokiql(&request_line);
+        if asts.len() == 0{
+            // Query was wrong.. lets tell it to the user
+            resp_str += "Invalid command.. Pls try again\n";
+        }else{
+            let mut ast_exector = Executor::new(db_instance.clone(), asts);
+            let responses = ast_exector.execute();
+
+            // Improve output result
+            for response in responses.iter() {
+                if let val = response {
+                    resp_str += &format!("{:?}\n", val);
+                };
+            }
         }
 
         resp_str += "<END_OF_RESPONSE>\n";
-        let _ = wr.write_all(resp_str.as_bytes()).await;
-        let _ = wr.flush().await;
+
+        wr.write_all(resp_str.as_bytes()).await
+          .map_err(|e| format!("Failed to write response: {}", e))?;
+
+        wr.flush().await
+          .map_err(|e| format!("Failed to flush writer: {}", e))?;
+
+        info_string(format!("Sent response: {} bytes", resp_str));
+
     }
 }
 
 impl LokiServer {
-    pub async fn new(host: String, port: u16, thread_count: usize) -> Self {
-        let addr = format!("{}:{}", host, port);
+    pub async fn new(thread_count: usize) -> Self {
+        let control_file = ControlFile::read_from_file_path(get_control_file_path()).unwrap();
+        let host: String = control_file.get_hostname();
+        let port: u16 = control_file.get_port();
+        let addr = format!("{}:{}", control_file.get_hostname(), control_file.get_port());
         info_string(format!("Trying to start server at -> {}", addr));
         let tcp_listener = TcpListener::bind(addr).await;
 
@@ -81,6 +100,7 @@ impl LokiServer {
                     port,
                     thread_count,
                     db_instance: Arc::new(RwLock::new(db_instance)),
+                    control_file: control_file,
                 }
             }
             Err(_) => {
@@ -90,12 +110,16 @@ impl LokiServer {
     }
 
     pub async fn start_event_loop(&mut self) {
-        let checkpoint_itr: u64 = match env::var("CHECKPOINT_INTERVAL") {
-            Ok(n) => n.parse().unwrap(),
-            _ => 120 as u64,
-        };
+        let checkpoint_itr: u64 = self.control_file.get_checkpoint_timer_interval();
+        let paxos_itr: u64 = self.control_file.get_paxos_timer_interval();
 
-        let mut checkpoint_timer = interval(Duration::from_secs(checkpoint_itr));
+        let mut checkpoint_timer = interval(Duration::from_secs(checkpoint_itr*60));
+        let mut paxos_gossip_broadcast_timer = interval(Duration::from_secs(paxos_itr*30));
+        // let mut paxos_gossip_consumer_timer = interval(Duration::from_secs(paxos_itr*60));
+
+        let mut paxos_node = PaxosNode::new_node();
+
+        let mut should_broadcast = true;
 
         loop {
             select! {
@@ -115,6 +139,7 @@ impl LokiServer {
                     }
                 }
 
+
                 _ = checkpoint_timer.tick() => {
                     info("Checkpointing...");
                     let ins = self.db_instance.clone();
@@ -122,6 +147,28 @@ impl LokiServer {
                         let mut db = ins.write().unwrap();
                         db.checkpoint();
                     });
+                }
+
+                _ = paxos_gossip_broadcast_timer.tick() => {
+                    // Send out self information 10 times
+                    if should_broadcast{
+                        for _ in 0..10{
+                            info("Gossiping self information with strangers!");
+                            let res = paxos_node.gossip().await;
+                            match res{
+                                Ok(_) => info("Successfully shared gossip information."),
+                                Err(err) => info_string(format!("Failed to share gossip information {}", err))
+                            };
+                        }
+                        sleep(Duration::from_secs(10)).await;
+                    }else{
+                        // Consume gossip data
+                        info("Consuming gossip from strangers..(for now)");
+                        paxos_node.gossip_consume().await;
+                    }
+
+                    should_broadcast = !should_broadcast;
+
                 }
             }
         }

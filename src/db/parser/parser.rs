@@ -1,3 +1,4 @@
+use crate::utils::error;
 use std::ops::Deref;
 
 use pest::iterators::Pair;
@@ -99,21 +100,27 @@ impl AST {
 }
 
 pub fn parse_lokiql(ql: &str) -> Vec<Option<AST>> {
-    let result = LokiQLParser::parse(Rule::LOKIQL_FILE, ql).unwrap();
-
-    let mut asts: Vec<Option<AST>> = vec![];
-    for pair in result {
-        match pair.as_rule() {
-            // Parse Each command
-            Rule::COMMAND => {
-                let ast = parse_vals(pair, None);
-                asts.push(ast);
+    let result = LokiQLParser::parse(Rule::LOKIQL_FILE, ql);
+    match result {
+        Ok(pairs) => {
+            let mut asts: Vec<Option<AST>> = vec![];
+            for pair in pairs {
+                match pair.as_rule() {
+                    // Parse Each command
+                    Rule::COMMAND => {
+                        let ast = parse_vals(pair, None);
+                        asts.push(ast);
+                    }
+                    _ => {}
+                }
             }
-            _ => {}
+            asts
+        }
+        Err(e) => {
+            error(&format!("Error parsing LokiQL: {}", e.to_string()));
+            vec![]
         }
     }
-
-    return asts;
 }
 
 pub fn parse_individual_item_asql(pair: Pair<Rule>) -> QLValues {
