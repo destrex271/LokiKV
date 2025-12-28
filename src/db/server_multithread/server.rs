@@ -1,16 +1,16 @@
 use crate::loki_kv::control::ControlFile;
-use crate::loki_kv::loki_kv::{LokiKV, ValueObject, get_control_file_path};
+use crate::loki_kv::loki_kv::{get_control_file_path, LokiKV, ValueObject};
 use crate::parser::executor::Executor;
 use crate::parser::parser::parse_lokiql;
 use crate::server_multithread::paxos::PaxosNode;
 use crate::utils::{error_string, info, info_string, warning};
+use rand;
 use std::env;
 use std::time::{Duration, Instant};
 use std::{
     ops::{Deref, DerefMut},
     sync::{Arc, RwLock},
 };
-use rand;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::select;
 use tokio::time::{interval, sleep};
@@ -29,7 +29,7 @@ pub struct LokiServer {
     control_file: ControlFile,
 }
 
-fn decide_random_bool() -> bool{
+fn decide_random_bool() -> bool {
     let x: u8 = rand::random();
     x % 2 == 0
 }
@@ -60,10 +60,10 @@ async fn handle_connection(
         let mut resp_str = String::new();
 
         let asts = parse_lokiql(&request_line);
-        if asts.len() == 0{
+        if asts.len() == 0 {
             // Query was wrong.. lets tell it to the user
             resp_str += "Invalid command.. Pls try again\n";
-        }else{
+        } else {
             let mut ast_exector = Executor::new(db_instance.clone(), asts);
             let responses = ast_exector.execute();
 
@@ -77,31 +77,41 @@ async fn handle_connection(
 
         resp_str += "<END_OF_RESPONSE>\n";
 
-        wr.write_all(resp_str.as_bytes()).await
-          .map_err(|e| format!("Failed to write response: {}", e))?;
+        wr.write_all(resp_str.as_bytes())
+            .await
+            .map_err(|e| format!("Failed to write response: {}", e))?;
 
-        wr.flush().await
-          .map_err(|e| format!("Failed to flush writer: {}", e))?;
+        wr.flush()
+            .await
+            .map_err(|e| format!("Failed to flush writer: {}", e))?;
 
         info_string(format!("Sent response: {} bytes", resp_str));
-
     }
 }
 
 impl LokiServer {
     pub async fn new(thread_count: usize) -> Self {
-        let control_file = ControlFile::read_from_file_path(get_control_file_path()).unwrap();
-        let host: String = control_file.get_hostname();
-        let port: u16 = control_file.get_port();
-        let addr = format!("{}:{}", control_file.get_hostname(), control_file.get_port());
+        let control_file = match ControlFile::read_from_file_path(get_control_file_path()) {
+            Ok(cf) => cf,
+            Err(e) => {
+                error_string(format!("Failed to read control file: {}", e));
+                // Exit gracefully if the control file is essential for operation
+                std::process::exit(1);
+            }
+        };
+
+        let addr = format!(
+            "{}:{}",
+            control_file.get_hostname(),
+            control_file.get_port()
+        );
         info_string(format!("Trying to start server at -> {}", addr));
         let tcp_listener = TcpListener::bind(addr).await;
 
         match tcp_listener {
             Ok(tcp_list) => {
-                info_string(format!("Started Sevrer at {}:{}", host, port));
-                let db_instance = LokiKV::new();
-                LokiServer {
+        let info_string = format!("new connection from {} on {}", addr, thread::current().name().unwrap_or("unnamed"));
+        info!("{}", info_string);
                     tcp_listener: tcp_list,
                     host,
                     port,
@@ -120,11 +130,12 @@ impl LokiServer {
         let checkpoint_itr: u64 = self.control_file.get_checkpoint_timer_interval();
         let paxos_itr: u64 = self.control_file.get_paxos_timer_interval();
 
-        let mut checkpoint_timer = interval(Duration::from_secs(checkpoint_itr*60));
-        let mut paxos_gossip_broadcast_timer = interval(Duration::from_secs(paxos_itr*30));
+        let mut checkpoint_timer = interval(Duration::from_secs(checkpoint_itr * 60));
+        let mut paxos_gossip_broadcast_timer = interval(Duration::from_secs(paxos_itr * 30));
         // let mut paxos_gossip_consumer_timer = interval(Duration::from_secs(paxos_itr*60));
 
-        let paxos_node: Arc<tokio::sync::RwLock<PaxosNode>> = Arc::new(tokio::sync::RwLock::new(PaxosNode::new_node()));
+        let paxos_node: Arc<tokio::sync::RwLock<PaxosNode>> =
+            Arc::new(tokio::sync::RwLock::new(PaxosNode::new_node()));
 
         let mut should_broadcast = decide_random_bool();
 

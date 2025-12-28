@@ -65,7 +65,7 @@ impl WALManager {
             Some("0.0.0.0:8081".to_string()),
             None,
             None,
-            None
+            None,
         )
         .unwrap();
         let timeline = control_file.get_next_timeline_id();

@@ -1,0 +1,13 @@
+host = "localhost"
+port = 8766
+last_wal_timeline = 0
+last_checkpoint_id = 0
+checkpoint_directory_path = "/app/data/checkpoints"
+wal_directory_path = "/app/data/wal"
+current_leader_value = 12
+self_identifier = 12
+send_addr = "0.0.0.0:8080"
+consume_addr = "0.0.0.0:8081"
+checkpoint_timer_interval = 1
+paxos_timer_interval = 1
+gossip_timeout = 200

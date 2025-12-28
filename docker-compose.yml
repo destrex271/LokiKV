@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  lokikv-1:
+    build: .
+    container_name: lokikv-1
+    ports:
+      - "7878:7878"
+    networks:
+      - lokikv-net
+    volumes:
+      - ./control.toml:/app/control.toml
+      - lokikv-data-1:/app/data
+    environment:
+      - CONTROL_FILE_PATH=/app/control.toml
+
+  lokikv-2:
+    build: .
+    container_name: lokikv-2
+    ports:
+      - "7879:7878"
+    networks:
+      - lokikv-net
+    volumes:
+      - ./control.toml:/app/control.toml
+      - lokikv-data-2:/app/data
+    environment:
+      - CONTROL_FILE_PATH=/app/control.toml
+
+networks:
+  lokikv-net:
+    driver: bridge
+
+volumes:
+  lokikv-data-1:
+  lokikv-data-2:
