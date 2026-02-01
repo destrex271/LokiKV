@@ -32,7 +32,7 @@ impl ServiceManager {
         soc2_listen_socket
             .bind(&SockAddr::from(listen_addr))
             .unwrap();
-        let std_socket = std::net::UdpSocket::bind(listen_addr).unwrap();
+        let std_socket: std::net::UdpSocket = soc2_listen_socket.into();
 
         let consume_addr: SocketAddr = control_file.get_consume_addr().parse().unwrap();
         let soc2_raw_consumer_socket = match Socket::new(Domain::IPV4, Type::DGRAM, None) {
@@ -48,11 +48,13 @@ impl ServiceManager {
 
         let node_directory: HashSet<(String, String)> = HashSet::new();
 
+        let broadcast_ip_string = format!("255.255.255.255:{}", consume_addr.port());
+
         ServiceManager {
             udp_socket_send: UdpSocket::from_std(std_socket).unwrap(),
             udp_socket_recv: UdpSocket::from_std(std_consumer_socket).unwrap(),
             node_directory: node_directory,
-            BROADCAST_ADDRESS: "255.255.255.255:8080".parse().unwrap(),
+            BROADCAST_ADDRESS: broadcast_ip_string.parse().unwrap(),
         }
     }
 
@@ -69,7 +71,10 @@ impl ServiceManager {
             // TODO: Add consumption logic
             // Somehitng like a go-routine treatment here?
             let mut msg_bytes: Vec<u8> = vec![];
-            self.udp_socket_recv.recv_from(&mut msg_bytes);
+            self.udp_socket_recv
+                .recv_from(&mut msg_bytes)
+                .await
+                .unwrap();
 
             tokio::spawn(async move {
                 // Log message
