@@ -22,14 +22,14 @@ pub struct ControlFile {
     consume_addr: String,
     checkpoint_timer_interval: Option<u64>,
     paxos_timer_interval: Option<u64>,
-    gossip_timeout: Option<u64>
+    gossip_timeout: Option<u64>,
 }
 
 impl ControlFile {
-    pub fn get_hostname(&self) -> String{
+    pub fn get_hostname(&self) -> String {
         return self.host.clone();
     }
-    pub fn get_port(&self) -> u16{
+    pub fn get_port(&self) -> u16 {
         return self.port;
     }
     pub fn get_next_checkpoint_id(&self) -> u64 {
@@ -39,11 +39,11 @@ impl ControlFile {
         self.last_wal_timeline + 1
     }
 
-    pub fn get_send_addr(&self) -> &str{
+    pub fn get_send_addr(&self) -> &str {
         &self.send_addr
     }
 
-    pub fn get_consume_addr(&self) -> &str{
+    pub fn get_consume_addr(&self) -> &str {
         &self.consume_addr
     }
 
@@ -64,23 +64,23 @@ impl ControlFile {
     }
 
     pub fn get_checkpoint_timer_interval(&self) -> u64 {
-        match self.checkpoint_timer_interval{
+        match self.checkpoint_timer_interval {
             Some(val) => return val,
-            None => return 1
+            None => return 1,
         }
     }
 
     pub fn get_paxos_timer_interval(&self) -> u64 {
-        match self.paxos_timer_interval{
+        match self.paxos_timer_interval {
             Some(val) => return val,
-            None => return 5
+            None => return 5,
         }
     }
 
-    pub fn get_gossip_timeout(&self) -> u64{
-        match self.gossip_timeout{
+    pub fn get_gossip_timeout(&self) -> u64 {
+        match self.gossip_timeout {
             Some(val) => return val,
-            None => return 300
+            None => return 300,
         }
     }
 
@@ -112,7 +112,7 @@ impl ControlFile {
         consume_addr: Option<String>,
         checkpoint_timer_interval: Option<u64>,
         paxos_timer_interval: Option<u64>,
-        gossip_timeout: Option<u64>
+        gossip_timeout: Option<u64>,
     ) -> Result<ControlFile, String> {
         // Create the WAL and checkpoint directories
         let wal_dir = Path::new(&wal_directory_path);
@@ -129,15 +129,19 @@ impl ControlFile {
         let final_send_addr: String = match send_addr {
             Some(addr) => addr,
             None => {
-                info_string("no listening address provided.. defaulting to 0.0.0.0:8080".to_string());
+                info_string(
+                    "no listening address provided.. defaulting to 0.0.0.0:8080".to_string(),
+                );
                 "0.0.0.0:8080".to_string()
             }
         };
 
-        let final_consume_addr: String = match consume_addr{
+        let final_consume_addr: String = match consume_addr {
             Some(addr) => addr,
             None => {
-                info_string("no listening address provided.. defaulting to 0.0.0.0:8081".to_string());
+                info_string(
+                    "no listening address provided.. defaulting to 0.0.0.0:8081".to_string(),
+                );
                 "0.0.0.0:8081".to_string()
             }
         };
@@ -155,7 +159,7 @@ impl ControlFile {
             consume_addr: final_consume_addr,
             checkpoint_timer_interval,
             paxos_timer_interval,
-            gossip_timeout
+            gossip_timeout,
         };
 
         // Take lock on control file

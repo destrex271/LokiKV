@@ -1,10 +1,17 @@
-use std::{collections::{HashMap, HashSet}, io::Split, net::SocketAddr};
 use local_ip_address::local_ip;
+use std::{
+    collections::{HashMap, HashSet},
+    io::Split,
+    net::SocketAddr,
+};
 
-use tokio::{net::UdpSocket, time::timeout};
 use tokio::time::Duration;
+use tokio::{net::UdpSocket, time::timeout};
 
-use crate::{loki_kv::{control::ControlFile, loki_kv::get_control_file_path}, utils::{info_string, warning, warning_string}};
+use crate::{
+    loki_kv::{control::ControlFile, loki_kv::get_control_file_path},
+    utils::{info_string, warning, warning_string},
+};
 
 // ---------------------------- SERVICE MANAGER -------------------------------------------
 
@@ -37,23 +44,24 @@ impl ServiceManager {
     }
 
     pub async fn broadcast_message(&self, msg: &str) -> Result<(), String> {
-        self.udp_socket_send.send_to(msg.as_bytes(), self.BROADCAST_ADDRESS).await.unwrap();
+        self.udp_socket_send
+            .send_to(msg.as_bytes(), self.BROADCAST_ADDRESS)
+            .await
+            .unwrap();
         Ok(())
     }
 
     pub async fn start_consumption(&self) -> Result<(), ()> {
-        loop{
+        loop {
             // TODO: Add consumption logic
             // Somehitng like a go-routine treatment here?
             let mut msg_bytes: Vec<u8> = vec![];
             self.udp_socket_recv.recv_from(&mut msg_bytes);
 
-            tokio::spawn(
-                async move {
-                    // Log message
-                    info_string(format!("Recieved the following message: {:?}", msg_bytes));
-                }
-            );
+            tokio::spawn(async move {
+                // Log message
+                info_string(format!("Recieved the following message: {:?}", msg_bytes));
+            });
 
             break;
         }
@@ -67,10 +75,14 @@ impl ServiceManager {
 
 // ---------------- PAXOS NODE ----------------------------
 
-fn get_ip_addr(addr: String) -> String{
+fn get_ip_addr(addr: String) -> String {
     let my_local_ip = local_ip().unwrap();
     let mut tks = addr.split(":");
-    let ip = format!("{}:{}", my_local_ip.to_string(), tks.nth(1).unwrap().to_string());
+    let ip = format!(
+        "{}:{}",
+        my_local_ip.to_string(),
+        tks.nth(1).unwrap().to_string()
+    );
     return ip;
 }
 
@@ -80,20 +92,23 @@ pub struct PaxosNode {
 }
 
 impl PaxosNode {
-    pub fn new_node() -> Self{
+    pub fn new_node() -> Self {
         let control_file = ControlFile::read_from_file_path(get_control_file_path()).unwrap();
-        PaxosNode { ctrl_file: control_file, service_manager:  ServiceManager::new()}
+        PaxosNode {
+            ctrl_file: control_file,
+            service_manager: ServiceManager::new(),
+        }
     }
     pub async fn propose(&self) {
         let value = self.ctrl_file.get_self_identifier();
 
         // Broadcast to network
-        match value{
-           Some(val) => {
-               let msg = format!("PROPOSE {}", val);
-               self.service_manager.broadcast_message(msg.as_str());
-           },
-           None => panic!("No value to broadcast!")
+        match value {
+            Some(val) => {
+                let msg = format!("PROPOSE {}", val);
+                self.service_manager.broadcast_message(msg.as_str());
+            }
+            None => panic!("No value to broadcast!"),
         }
     }
 
@@ -103,7 +118,11 @@ impl PaxosNode {
     // Gossip for node discovery
     pub async fn gossip(&self) -> Result<(), String> {
         let node_id = self.ctrl_file.get_self_identifier().unwrap();
-        let data = format!("{}~{}", node_id.to_string(), get_ip_addr(self.ctrl_file.get_consume_addr().to_string()));
+        let data = format!(
+            "{}~{}",
+            node_id.to_string(),
+            get_ip_addr(self.ctrl_file.get_consume_addr().to_string())
+        );
         info_string(format!("Sending -> {}", data));
         let result = self.service_manager.broadcast_message(data.as_str()).await;
         return result;
@@ -111,17 +130,24 @@ impl PaxosNode {
 
     pub async fn gossip_consume(&mut self) {
         let MAX_GOSSIP_CONSUMPTION = 10;
-        for i in 0..MAX_GOSSIP_CONSUMPTION{
+        for i in 0..MAX_GOSSIP_CONSUMPTION {
             info_string(format!("{} gossip trial", i));
             // Somehitng like a go-routine treatment here?
             let mut msg_bytes: Vec<u8> = vec![];
-            match timeout(Duration::from_secs(self.ctrl_file.get_gossip_timeout()), self.service_manager.udp_socket_recv.recv_from(&mut msg_bytes)).await{
+            match timeout(
+                Duration::from_secs(self.ctrl_file.get_gossip_timeout()),
+                self.service_manager
+                    .udp_socket_recv
+                    .recv_from(&mut msg_bytes),
+            )
+            .await
+            {
                 Ok(Ok((_, _))) => {
                     let data = String::from_utf8(msg_bytes).unwrap();
                     let mut tokens;
-                    if data.contains("~"){
+                    if data.contains("~") {
                         tokens = data.as_str().split("~");
-                    }else{
+                    } else {
                         let msg = format!("Token does not contain any ~ {:?}, skipping..", data);
                         warning(msg.as_str());
                         continue;
@@ -129,12 +155,14 @@ impl PaxosNode {
 
                     // Log message
                     info_string(format!("Recieved the following message: {:?}", tokens));
-                    self.service_manager.update_node_directory(tokens.nth(0).unwrap().to_string(), tokens.nth(1).unwrap().to_string());
-                },
+                    self.service_manager.update_node_directory(
+                        tokens.nth(0).unwrap().to_string(),
+                        tokens.nth(1).unwrap().to_string(),
+                    );
+                }
                 Ok(Err(e)) => panic!("{}", e),
-                Err(e) => panic!("{}", e)
+                Err(e) => panic!("{}", e),
             };
-
         }
     }
 }
