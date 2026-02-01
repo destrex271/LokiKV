@@ -1,4 +1,5 @@
 use local_ip_address::local_ip;
+use socket2::{Domain, SockAddr, Socket, Type};
 use std::{
     collections::{HashMap, HashSet},
     io::Split,
@@ -26,14 +27,26 @@ impl ServiceManager {
     pub fn new() -> Self {
         let control_file = ControlFile::read_from_file_path(get_control_file_path()).unwrap();
         let listen_addr: SocketAddr = control_file.get_send_addr().parse().unwrap();
+        let soc2_listen_socket = Socket::new(Domain::IPV4, Type::DGRAM, None).unwrap();
+        soc2_listen_socket.set_broadcast(true).unwrap();
+        soc2_listen_socket
+            .bind(&SockAddr::from(listen_addr))
+            .unwrap();
         let std_socket = std::net::UdpSocket::bind(listen_addr).unwrap();
 
         let consume_addr: SocketAddr = control_file.get_consume_addr().parse().unwrap();
-        let std_consumer_socket = std::net::UdpSocket::bind(consume_addr).unwrap();
+        let soc2_raw_consumer_socket = match Socket::new(Domain::IPV4, Type::DGRAM, None) {
+            Ok(socket) => socket,
+            Err(e) => panic!("Failed to create socket: {}", e),
+        };
+        soc2_raw_consumer_socket.set_reuse_address(true).unwrap();
+        soc2_raw_consumer_socket
+            .bind(&SockAddr::from(consume_addr))
+            .unwrap();
 
-        let mut node_directory: HashSet<(String, String)> = HashSet::new();
+        let std_consumer_socket: std::net::UdpSocket = soc2_raw_consumer_socket.into();
 
-        std_socket.set_broadcast(true);
+        let node_directory: HashSet<(String, String)> = HashSet::new();
 
         ServiceManager {
             udp_socket_send: UdpSocket::from_std(std_socket).unwrap(),
