@@ -179,7 +179,7 @@ impl LokiServer {
                         }else{
                             // Consume gossip data
                             info("Consuming gossip from strangers..(for now)");
-                            node.write().await.gossip_consume().await;
+                            node.write().await.start_consumption().await;
                         }
 
                     });

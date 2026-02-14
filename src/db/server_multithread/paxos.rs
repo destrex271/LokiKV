@@ -146,9 +146,9 @@ impl PaxosNode {
         return result;
     }
 
-    pub async fn gossip_consume(&mut self) {
-        let MAX_GOSSIP_CONSUMPTION = 10;
-        for i in 0..MAX_GOSSIP_CONSUMPTION {
+    pub async fn start_consumption(&mut self) {
+        let max_consumption = 10;
+        for i in 0..max_consumption {
             info_string(format!("{} gossip trial", i));
             // Somehitng like a go-routine treatment here?
             let mut msg_bytes: Vec<u8> = vec![];
@@ -165,18 +165,15 @@ impl PaxosNode {
                     let mut tokens;
                     if data.contains("~") {
                         tokens = data.as_str().split("~");
-                    } else {
-                        let msg = format!("Token does not contain any ~ {:?}, skipping..", data);
-                        warning(msg.as_str());
-                        continue;
+                        // Log message
+                        info_string(format!("Recieved the following message: {:?}", tokens));
+                        self.service_manager.update_node_directory(
+                            tokens.nth(0).unwrap().to_string(),
+                            tokens.nth(1).unwrap().to_string(),
+                        );
+                    } else if data.starts_with("PROPOSE") {
+                        self.propose().await
                     }
-
-                    // Log message
-                    info_string(format!("Recieved the following message: {:?}", tokens));
-                    self.service_manager.update_node_directory(
-                        tokens.nth(0).unwrap().to_string(),
-                        tokens.nth(1).unwrap().to_string(),
-                    );
                 }
                 Ok(Err(e)) => panic!("{}", e),
                 Err(e) => panic!("{}", e),
