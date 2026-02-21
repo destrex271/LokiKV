@@ -2,9 +2,10 @@ use crate::loki_kv::control::ControlFile;
 use crate::loki_kv::loki_kv::{get_control_file_path, LokiKV, ValueObject};
 use crate::parser::executor::Executor;
 use crate::parser::parser::parse_lokiql;
-use crate::server_multithread::paxos::PaxosNode;
+use crate::server_multithread::paxos::MultiPaxos;
 use crate::utils::{error_string, info, info_string, warning};
 use rand;
+use std::collections::HashSet;
 use std::env;
 use std::time::{Duration, Instant};
 use std::{
@@ -127,10 +128,11 @@ impl LokiServer {
 
         let mut checkpoint_timer = interval(Duration::from_secs(checkpoint_itr * 60));
         let mut paxos_gossip_broadcast_timer = interval(Duration::from_secs(paxos_itr * 30));
-        // let mut paxos_gossip_consumer_timer = interval(Duration::from_secs(paxos_itr*60));
-
-        let paxos_node: Arc<tokio::sync::RwLock<PaxosNode>> =
-            Arc::new(tokio::sync::RwLock::new(PaxosNode::new_node()));
+        
+        let node_id = self.control_file.get_self_identifier().unwrap_or(1);
+        let peers: HashSet<u64> = vec![1, 2, 3].into_iter().collect();
+        let paxos_node: Arc<tokio::sync::RwLock<MultiPaxos>> =
+            Arc::new(tokio::sync::RwLock::new(MultiPaxos::new(node_id, peers)));
 
         let mut should_broadcast = decide_random_bool();
 
@@ -165,21 +167,21 @@ impl LokiServer {
                 _ = paxos_gossip_broadcast_timer.tick() => {
                     let node = paxos_node.clone();
                     tokio::spawn( async move{
-                        // Send out self information 10 times
                         if should_broadcast{
                             for _ in 0..10{
                                 info("Gossiping self information with strangers!");
-                                let res = node.write().await.gossip().await;
-                                match res{
-                                    Ok(_) => info("Successfully shared gossip information."),
-                                    Err(err) => info_string(format!("Failed to share gossip information {}", err))
-                                };
+                                match node.read().await.gossip().await {
+                                    Ok(data) => info_string(format!("Gossip: {}", data)),
+                                    Err(err) => info_string(format!("Failed to gossip: {}", err))
+                                }
                             }
                             sleep(Duration::from_secs(10)).await;
                         }else{
-                            // Consume gossip data
                             info("Consuming gossip from strangers..(for now)");
-                            node.write().await.start_consumption().await;
+                            let state = node.read().await;
+                            info_string(format!("Paxos state - Leader: {:?}, Peers: {:?}", 
+                                state.get_leader().await, 
+                                state.get_state().await.peers));
                         }
 
                     });
